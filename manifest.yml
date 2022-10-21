@@ -1,0 +1,6 @@
+# This is for future deployment use
+
+applications:
+  - name: teaching-management-webapp
+    memory: 128M
+    instances: 1
