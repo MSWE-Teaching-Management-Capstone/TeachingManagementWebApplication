@@ -1,23 +1,70 @@
 <!doctype html>
-<title>{% block title %}{% endblock %} - Flaskr</title>
-<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-<nav>
-  <h1>Flaskr</h1>
-  <ul>
-    {% if g.user %}
-      <li><span>{{ g.user['username'] }}</span>
-      <li><a href="{{ url_for('auth.logout') }}">Log Out</a>
-    {% else %}
-      <li><a href="{{ url_for('auth.login') }}">Log In</a>
-    {% endif %}
-  </ul>
-</nav>
-<section class="content">
-  <header>
-    {% block header %}{% endblock %}
-  </header>
-  {% for message in get_flashed_messages() %}
-    <div class="flash">{{ message }}</div>
-  {% endfor %}
-  {% block content %}{% endblock %}
-</section>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% block title %}{% endblock %} - UCI CS Teaching Management</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-Zenh87qX5JnK2Jl0vWa8Ck2rdkQ2Bzep5IDxbcnCeuOxjzrPF/et3URy9Bv1WTRi" crossorigin="anonymous">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.2.0/css/all.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='base.css') }}">
+  </head>
+  <body>
+    <main class="d-flex flex-nowrap">
+      <!-- if login success, show sidebar; else, hide sidebar -->
+      <!-- TODO: Update href after other pages complete -->
+      <nav>
+        <div class="d-flex flex-column flex-shrink-0 bg-light text-center" style="height: 100vh;">
+          <a href="/" class="d-block p-3 link-dark text-decoration-none" title="Icon-only" data-bs-toggle="tooltip" data-bs-placement="right">
+            <i class="fa-solid fa-computer"></i>
+          </a>
+          <ul class="nav nav-pills nav-flush flex-column mb-auto text-center">
+            <li class="nav-item">
+              <a href="#" class="nav-link active py-3 border-bottom rounded-0" aria-current="page" title="Home" data-bs-toggle="tooltip" data-bs-placement="right">
+                <i class="fa-solid fa-user"></i>
+                <div>Faculty</div>
+              </a>
+            </li>
+            <li>
+              <a href="#" class="nav-link py-3 border-bottom rounded-0" title="Dashboard" data-bs-toggle="tooltip" data-bs-placement="right">
+                <i class="fa-solid fa-book"></i>
+                <div>Courses</div>
+              </a>
+            </li>
+            <li>
+              <a href="#" class="nav-link py-3 border-bottom rounded-0" title="Orders" data-bs-toggle="tooltip" data-bs-placement="right">
+                <i class="fa-solid fa-database"></i>
+                <div>Logs</div>
+              </a>
+            </li>
+            <li>
+              <a href="#" class="nav-link py-3 border-bottom rounded-0" title="Products" data-bs-toggle="tooltip" data-bs-placement="right">
+                <i class="fa-solid fa-gear"></i>
+                <div>Settings</div>
+              </a>
+            </li>
+          </ul>
+          <div class="dropdown border-top">
+            <a href="#" class="d-flex align-items-center justify-content-center p-3 link-dark text-decoration-none dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+              <i class="fa-regular fa-face-smile"></i>
+            </a>
+            <ul class="dropdown-menu text-small shadow">
+              <li><a class="dropdown-item" href="#">Manage Admins</a></li>
+              <li><hr class="dropdown-divider"></li>
+              <li><a class="dropdown-item" href="#">Logout</a></li>
+            </ul>
+          </div>
+        </div>
+      </nav>
+
+      <section class="content">
+        <header>
+          <h1>{% block header %}{% endblock %}</h1>
+        </header>
+
+        {% block content %}{% endblock %}
+      </section>
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-OERcA2EqjJCMA+/3y+gxIOqMEjwtxJY7qPCqsdltbNJuaOe923+mo//f6V8Qbsw3" crossorigin="anonymous"></script>
+  </body>
+</html>
