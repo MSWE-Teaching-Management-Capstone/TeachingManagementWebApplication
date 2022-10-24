@@ -16,8 +16,9 @@ git clone https://github.com/MSWE-Teaching-Management-Capstone/TeachingManagemen
 
 ```
 
-2. Create a `.flaskenv` file to put flask env variables under the root directory.
+2. Create a `.flaskenv` file and `.env` file to put flask env variables under the root directory.
 
+2.1 **In the `.flaskenv` file**
 ```shell
 # Linus/MacOS
 export FLASK_APP='management_app'
@@ -27,8 +28,16 @@ export FLASK_DEBUG='true'
 set FLASK_APP='management_app'
 set FLASK_DEBUG='true'
 ```
+2.2 **In the `.env` file**
+```shell
+# Linus/MacOS
+export GOOGLE_CLIENT_ID='559245110133-8bog3pa5k75ih9q1fkkauiv8latmbgjf.apps.googleusercontent.com'
 
-> Note that this `.flaskenv` file will store at your local instead of repository. We can discuss if we would like to publish this file when we deploy.
+# Windows
+set GOOGLE_CLIENT_ID='559245110133-8bog3pa5k75ih9q1fkkauiv8latmbgjf.apps.googleusercontent.com'
+```
+
+> Note that the `.flaskenv` and `.env` file will store at your local instead of repository. We can discuss if we would like to publish this file when we deploy.
 
 3. Create a virtual environment and activate it.
 

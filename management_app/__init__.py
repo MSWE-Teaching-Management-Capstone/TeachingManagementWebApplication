@@ -1,9 +1,10 @@
 import os
 
-from flask import Flask
+from flask import Flask, redirect
 from dotenv import load_dotenv
 
 load_dotenv('.flaskenv')
+load_dotenv('.env')
 
 def create_app(test_config=None):
     # create and configure the app
@@ -32,9 +33,8 @@ def create_app(test_config=None):
     from .views import auth
     app.register_blueprint(auth.bp)
 
-    # a simple page that says hello
     @app.route('/')
-    def hello():
-        return 'Hello, Home Page!'
+    def redirect_to_auth_login():
+        return redirect('/auth')
 
     return app
