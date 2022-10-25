@@ -1,7 +1,10 @@
 import os
-
 from flask import Flask, redirect
 from dotenv import load_dotenv
+
+from . import db
+from .views.auth import auth
+from .views.faculty import faculty
 
 load_dotenv('.flaskenv')
 load_dotenv('.env')
@@ -26,12 +29,11 @@ def create_app(test_config=None):
         os.makedirs(app.instance_path)
     except OSError:
         pass
-    
-    from . import db
+
     db.init_app(app)
 
-    from .views import auth
-    app.register_blueprint(auth.bp)
+    app.register_blueprint(auth)
+    app.register_blueprint(faculty) # temporarily render faculty views under url_prefix='/faculty'
 
     @app.route('/')
     def redirect_to_auth_login():

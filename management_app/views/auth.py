@@ -9,7 +9,7 @@ from google_auth_oauthlib.flow import Flow
 from pip._vendor import cachecontrol
 import google.auth.transport.requests
 
-bp = Blueprint('auth', __name__, url_prefix='/auth')
+auth = Blueprint('auth', __name__, url_prefix='/auth')
 
 os.environ["OAUTHLIB_INSECURE_TRANSPORT"] = "1"
 
@@ -36,25 +36,25 @@ def login_required(view):
     return wrapped_view
 
 
-@bp.route("/")
+@auth.route("/")
 def index():
     return render_template("login.html")
 
 
-@bp.route("/login")
+@auth.route("/login")
 def login():
     authorization_url, state = flow.authorization_url()
     session["state"] = state
     return redirect(authorization_url)
 
 
-@bp.route("/logout")
+@auth.route("/logout")
 def logout():
     session.clear()
     return redirect(url_for('auth.index'))
 
 
-@bp.route("/login_callback")
+@auth.route("/login_callback")
 def login_callback():
     flow.fetch_token(authorization_response=request.url)
 
@@ -77,7 +77,7 @@ def login_callback():
     return redirect(url_for('auth.redirect_to_homepage'))
 
 
-@bp.route("/user_home")
+@auth.route("/user_home")
 @login_required
 def redirect_to_homepage():
     return render_template("user_home.html", user_name=session['name'])

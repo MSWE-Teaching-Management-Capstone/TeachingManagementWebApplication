@@ -1,0 +1,76 @@
+{% extends 'base.html' %}
+
+{% block title %}Faculty{% endblock %}
+{% block header %}Faculty{% endblock %}
+
+{% block content %}
+  <div class="row" style="margin: 20px 0;">
+    <div class="col d-inline-flex">
+      <button type="button" class="btn btn-outline-primary">
+        <i class="fa-solid fa-download"></i>
+        Import Changes
+      </button>
+      <div class="dropdown" style="margin-left: 20px;">
+        <button class="btn btn-primary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+          Actions
+        </button>
+        <ul class="dropdown-menu">
+          <li><a class="dropdown-item" href="#"><i class="fa-solid fa-plus"></i>Add Faculty Member</a></li>
+          <!-- TODO: Rollback only shows after upload in current session -->
+          <li><a class="dropdown-item" href="#"><i class="fa-solid fa-rotate-right"></i>Rollback Previous Change</a></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="row" style="margin: 20px 0;">
+    <div class="col">
+      <table class="table">
+        <thead>
+          <tr>
+            <th scope="col">Name</th>
+            <th scope="col">Email</th>
+            <th scope="col">Role</th>
+            <th scope="col">Required Teaching Points</th>
+            <th scope="col">Previous Year Teaching Point Balance</th>
+            <th scope="col">Estimated End of Year Teaching Point Balance</th>
+            <th scope="col"></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for faculty in faculties %}
+            <tr>
+              <th scope="row">{{ faculty['name'] }}</th>
+              <td>{{ faculty['email'] }}</td>
+              <td>{{ faculty['role'] }}</td>
+              <td>{{ faculty['required_point'] }}</td>
+              <td>{{ faculty['prev_balance'] }}</td>
+              <td>{{ faculty['estimated_balance'] }}</td>
+              <td>
+                <div class="dropdown">
+                  <button class="btn btn-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                    Edit/Delete
+                  </button>
+                  <ul class="dropdown-menu">
+                    <li>
+                      <a class="dropdown-item" href="#"><i class="fa-solid fa-pen-to-square"></i>Edit</a>
+                    </li>
+                    <li>
+                      <a class="dropdown-item" href="#"><i class="fa-solid fa-trash""></i></i>Delete</a>
+                    </li>
+                  </ul>
+                </div>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  // console.log("We can write JavaScript here in the future");
+</script>
+{% endblock scripts %}
