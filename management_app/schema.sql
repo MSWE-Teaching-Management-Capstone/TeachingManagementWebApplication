@@ -52,12 +52,12 @@ CREATE TABLE scheduled_teaching (
 );
 
 CREATE TABLE exceptions (
-  exception_id INTEGER,  -- AUTOINCREMENT
-  user_id INTEGER,
-  year INTEGER,
-  reason TEXT NOT NULL,
-  points REAL,
-  PRIMARY KEY (exception_id, user_id, year),
+  exception_id INTEGER PRIMARY KEY,  -- AUTOINCREMENT
+  user_id INTEGER NOT NULL,
+  year INTEGER NOT NULL,
+  exception_category TEXT NOT NULL,
+  message TEXT NOT NULL,
+  points REAL,  
   FOREIGN KEY (user_id) REFERENCES users (user_id)
 );
 
@@ -68,11 +68,12 @@ CREATE TABLE points_constant (
 );
 
 CREATE TABLE logs (
-  transaction_id INTEGER PRIMARY KEY,  -- AUTOINCREMENT
+  log_id INTEGER PRIMARY KEY,  -- AUTOINCREMENT
   owner TEXT NOT NULL,
   created TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   user_id INTEGER,
-  message TEXT,
-  exception_category TEXT,
-  FOREIGN KEY (user_id) REFERENCES users (user_id)
+  exception_id INTEGER,
+  log_category TEXT,
+  FOREIGN KEY (user_id) REFERENCES users (user_id),
+  FOREIGN KEY (exception_id) REFERENCES exceptions (exception_id),
 );
