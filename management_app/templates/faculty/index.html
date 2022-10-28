@@ -6,10 +6,54 @@
 {% block content %}
   <div class="row" style="margin: 20px 0;">
     <div class="col d-inline-flex">
-      <button type="button" class="btn btn-outline-primary">
+      <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#exampleModal">
         <i class="fa-solid fa-download"></i>
         Import Changes
       </button>
+      <div class="modal fade" id="exampleModal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h1 class="modal-title fs-5" id="exampleModalLabel">Add and/or edit faculty using the import template and upload it here.</h1>
+              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+              <div class="row" style="margin: 10px 0;">
+                <div class="col">
+                  <a href="{{ url_for('faculty.download_file', filename='users_template.xlsx') }}">
+                    <button type="button" class="btn btn-primary">
+                      <i class="fa-solid fa-download"></i>
+                      Downolad Users Import Template
+                    </button>
+                  </a>
+                </div>
+              </div>
+              <div class="row" style="margin: 10px 0;">
+                <div class="col">
+                  <a href="{{ url_for('faculty.download_file', filename='professors_point_info_template.xlsx') }}">
+                    <button type="button" class="btn btn-primary">
+                      <i class="fa-solid fa-download"></i>
+                      Downolad Professor Point Info Import Template
+                    </button>
+                  </a>
+                </div>
+              </div>
+              <div class="row" style="margin: 10px 0;">
+                <div class="col">
+                  <button type="button" class="btn btn-outline-primary">
+                    Choose File to Upload
+                  </button>
+                </div>
+              </div>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+              <!-- ToDo: Only Enable import changes button after user uploades the file -->
+              <button type="button" class="btn btn-primary" disabled>Import Changes</button>
+            </div>
+          </div>
+        </div>
+      </div>
       <div class="dropdown" style="margin-left: 20px;">
         <button class="btn btn-primary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
           Actions
