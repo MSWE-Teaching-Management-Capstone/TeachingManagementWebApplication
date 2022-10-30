@@ -75,5 +75,5 @@ CREATE TABLE logs (
   exception_id INTEGER,
   log_category TEXT,
   FOREIGN KEY (user_id) REFERENCES users (user_id),
-  FOREIGN KEY (exception_id) REFERENCES exceptions (exception_id),
+  FOREIGN KEY (exception_id) REFERENCES exceptions (exception_id)
 );
