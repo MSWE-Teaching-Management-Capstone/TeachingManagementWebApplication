@@ -89,6 +89,15 @@ flask run
 ```
 The web browser will run at `http://127.0.0.1:5000/` on the browser.
 
+## Run Testing
+
+To run testing in virutal environment, use the command below after activating your venv:
+```shell
+python -m pytest
+```
+
+`Pytest` will collect the files name starting `test_` under tests folder.
+
 ## Troubleshooting
 - TBD
 

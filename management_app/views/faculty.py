@@ -16,7 +16,7 @@ def index():
   ]
   return render_template('faculty/index.html', faculties=faculties)
 
-@faculty.route('/download_file/<filename>')
+@faculty.route('/data-templates/<filename>')
 @login_required
 def download_file(filename):
   path = 'static/data_templates'
