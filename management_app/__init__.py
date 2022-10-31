@@ -5,6 +5,7 @@ from dotenv import load_dotenv
 from . import db
 from .views.auth import auth
 from .views.faculty import faculty
+from .views.settings import settings
 
 load_dotenv('.flaskenv')
 load_dotenv('.env')
@@ -34,6 +35,7 @@ def create_app(test_config=None):
 
     app.register_blueprint(auth)
     app.register_blueprint(faculty) # temporarily render faculty views under url_prefix='/faculty'
+    app.register_blueprint(settings) # temporarily render settings views under url_prefix='/settings'
 
     @app.route('/')
     def redirect_to_auth_login():

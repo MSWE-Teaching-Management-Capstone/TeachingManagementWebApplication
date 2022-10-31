@@ -48,8 +48,6 @@
               <i class="fa-regular fa-face-smile"></i>
             </a>
             <ul class="dropdown-menu text-small shadow">
-              <li><a class="dropdown-item" href="#">Manage Admins</a></li>
-              <li><hr class="dropdown-divider"></li>
               <li><a class="dropdown-item" href="/auth/logout">Logout</a></li>
             </ul>
           </div>
@@ -57,8 +55,9 @@
       </nav>
 
       <section class="content">
-        <header>
+        <header class="d-flex gap-3">
           <h1>{% block header %}{% endblock %}</h1>
+          {% block header_content %}{% endblock %}
         </header>
 
         {% block content %}{% endblock %}
