@@ -77,7 +77,8 @@ def login_callback():
     return redirect(url_for('auth.redirect_to_homepage'))
 
 
-@auth.route("/user_home")
+@auth.route("/redirect_to_homepage")
 @login_required
 def redirect_to_homepage():
-    return render_template("user_home.html", user_name=session['name'])
+    # We currently use faculty page as home page after user logging in
+    return redirect('/faculty')
