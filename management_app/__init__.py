@@ -5,11 +5,8 @@ from dotenv import load_dotenv
 from . import db
 from .views.auth import auth
 from .views.faculty import faculty
-<<<<<<< HEAD
 from .views.settings import settings
-=======
 from .views.course import courses
->>>>>>> create offerings template
 
 load_dotenv('.flaskenv')
 load_dotenv('.env')
