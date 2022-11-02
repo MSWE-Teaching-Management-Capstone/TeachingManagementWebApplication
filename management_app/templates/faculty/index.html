@@ -4,117 +4,127 @@
 {% block header %}Faculty{% endblock %}
 
 {% block content %}
-  <div class="row" style="margin: 20px 0;">
-    <div class="col d-inline-flex">
-      <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#exampleModal">
-        <i class="fa-solid fa-download"></i>
-        Import Changes
-      </button>
-      <div class="modal fade" id="exampleModal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
-        <div class="modal-dialog">
-          <div class="modal-content">
-            <div class="modal-header">
-              <h1 class="modal-title fs-5" id="exampleModalLabel">Add and/or edit faculty using the import template and upload it here.</h1>
-              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-              <div class="row" style="margin: 10px 0;">
-                <div class="col">
-                  <a href="{{ url_for('faculty.download_file', filename='users_template.xlsx') }}">
-                    <button type="button" class="btn btn-primary">
-                      <i class="fa-solid fa-download"></i>
-                      Download Users Data Template
-                    </button>
-                  </a>
-                </div>
-              </div>
-              <div class="row" style="margin: 10px 0;">
-                <div class="col">
-                  <a href="{{ url_for('faculty.download_file', filename='professors_point_info_template.xlsx') }}">
-                    <button type="button" class="btn btn-primary">
-                      <i class="fa-solid fa-download"></i>
-                      Download Professor Point Info Data Template
-                    </button>
-                  </a>
-                </div>
-              </div>
-              <div class="row" style="margin: 10px 0;">
-                <div class="col">
-                  <button type="button" class="btn btn-outline-primary">
-                    Choose File to Upload
-                  </button>
-                </div>
-              </div>
-            </div>
-            <div class="modal-footer">
-              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-              <!-- ToDo: Only Enable import changes button after user uploades the file -->
-              <button type="button" class="btn btn-primary" disabled>Import Changes</button>
-            </div>
+<div class="row">
+  <div class="col-2">
+    <div class="d-flex">
+      <label class="align-self-center" for="yearSelect">Year:&nbsp;</label>
+      <select class="form-select align-self-center" id="yearSelect" aria-label="Year Select">
+        <option selected>2022-2023</option>
+        <option selected>2021-2022</option>
+      </select>
+    </div>
+  </div>
+  <div class="col-10">
+    <div class="d-grid justify-content-end">
+      <div class="d-inline-flex">
+        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#importChange">
+          <i class="fa-solid fa-download"></i>
+          Import Changes
+        </button>
+        <div class="dropdown" style="margin-left: 20px;">
+          <button class="btn btn-secondary fw-bold" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+            ⋮
+          </button>
+          <ul class="dropdown-menu">
+            <li><a class="dropdown-item" href="#"><i class="fa-solid fa-plus"></i> Add Faculty Member</a></li>
+            <!-- TODO: Rollback only shows after upload in current session -->
+            <li><a class="dropdown-item" href="#"><i class="fa-solid fa-rotate-right"></i> Rollback Previous Change</a></li>
+          </ul>
+        </div>
+      </div>
+  </div>
+</div>
+
+</div>
+
+<table class="table">
+  <thead>
+    <tr>
+      <th scope="col">Name</th>
+      <th scope="col">Email</th>
+      <th scope="col">Role</th>
+      <th scope="col">Required Teaching Points</th>
+      <th scope="col">Previous Year Teaching Point Balance</th>
+      <th scope="col">Estimated End of Year Teaching Point Balance</th>
+      <th scope="col"></th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for faculty in faculties %}
+      <tr>
+        <th scope="row">{{ faculty['name'] }}</th>
+        <td>{{ faculty['email'] }}</td>
+        <td>{{ faculty['role'] }}</td>
+        <td>{{ faculty['required_point'] }}</td>
+        <td>{{ faculty['prev_balance'] }}</td>
+        <td>{{ faculty['estimated_balance'] }}</td>
+        <td>
+          <div class="dropdown">
+            <button class="btn btn-secondary fw-bold" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+              ⋮
+            </button>
+            <ul class="dropdown-menu">
+              <li>
+                <a class="dropdown-item" href="#"><i class="fa-solid fa-pen-to-square"></i> Edit</a>
+              </li>
+              <li>
+                <a class="dropdown-item" href="#"><i class="fa-solid fa-trash""></i></i> Delete</a>
+              </li>
+            </ul>
+          </div>
+        </td>
+      </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<div class="modal fade" id="importChange" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-labelledby="importChangeLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h1 class="modal-title fs-5" id="importChangeLabel">Add and/or edit faculty using the import template and upload it here.</h1>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <div class="row" style="margin: 10px 0;">
+          <div class="col">
+            <a href="{{ url_for('faculty.download_file', filename='users_template.xlsx') }}">
+              <button type="button" class="btn btn-primary">
+                <i class="fa-solid fa-download"></i>
+                Download Users Data Template
+              </button>
+            </a>
+          </div>
+        </div>
+        <div class="row" style="margin: 10px 0;">
+          <div class="col">
+            <a href="{{ url_for('faculty.download_file', filename='professors_point_info_template.xlsx') }}">
+              <button type="button" class="btn btn-primary">
+                <i class="fa-solid fa-download"></i>
+                Download Professor Point Info Data Template
+              </button>
+            </a>
+          </div>
+        </div>
+        <div class="row" style="margin: 10px 0;">
+          <div class="col">
+            <button type="button" class="btn btn-outline-primary">
+              Upload users template OR professor point info template
+            </button>
           </div>
         </div>
       </div>
-      <div class="dropdown" style="margin-left: 20px;">
-        <button class="btn btn-primary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
-          Actions
-        </button>
-        <ul class="dropdown-menu">
-          <li><a class="dropdown-item" href="#"><i class="fa-solid fa-plus"></i>Add Faculty Member</a></li>
-          <!-- TODO: Rollback only shows after upload in current session -->
-          <li><a class="dropdown-item" href="#"><i class="fa-solid fa-rotate-right"></i>Rollback Previous Change</a></li>
-        </ul>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <!-- ToDo: Only Enable import changes button after user uploades the file -->
+        <button type="button" class="btn btn-primary" disabled>Import Changes</button>
       </div>
     </div>
   </div>
-
-  <div class="row" style="margin: 20px 0;">
-    <div class="col">
-      <table class="table">
-        <thead>
-          <tr>
-            <th scope="col">Name</th>
-            <th scope="col">Email</th>
-            <th scope="col">Role</th>
-            <th scope="col">Required Teaching Points</th>
-            <th scope="col">Previous Year Teaching Point Balance</th>
-            <th scope="col">Estimated End of Year Teaching Point Balance</th>
-            <th scope="col"></th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for faculty in faculties %}
-            <tr>
-              <th scope="row">{{ faculty['name'] }}</th>
-              <td>{{ faculty['email'] }}</td>
-              <td>{{ faculty['role'] }}</td>
-              <td>{{ faculty['required_point'] }}</td>
-              <td>{{ faculty['prev_balance'] }}</td>
-              <td>{{ faculty['estimated_balance'] }}</td>
-              <td>
-                <div class="dropdown">
-                  <button class="btn btn-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
-                    Edit/Delete
-                  </button>
-                  <ul class="dropdown-menu">
-                    <li>
-                      <a class="dropdown-item" href="#"><i class="fa-solid fa-pen-to-square"></i>Edit</a>
-                    </li>
-                    <li>
-                      <a class="dropdown-item" href="#"><i class="fa-solid fa-trash""></i></i>Delete</a>
-                    </li>
-                  </ul>
-                </div>
-              </td>
-            </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </div>
-  </div>
+</div>
 {% endblock %}
 
 {% block scripts %}
 <script>
-  // console.log("We can write JavaScript here in the future");
 </script>
 {% endblock scripts %}
