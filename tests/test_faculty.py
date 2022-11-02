@@ -1,7 +1,5 @@
 import os
-import tempfile
 import pytest
-from flask import session
 
 from management_app import create_app
 

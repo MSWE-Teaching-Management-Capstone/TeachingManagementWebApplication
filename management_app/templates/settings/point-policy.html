@@ -24,22 +24,20 @@
 {% endblock %}
 
 {% block content %}
-  <div class="container">
-    <table class="table">
-      <thead>
-        <tr>
-          <th scope="col">Rule</th>
-          <th scope="col">Point Value</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for rule in rules %}
-          <tr>
-            <th scope="row">{{rule['name']}}</th>
-            <td>{{rule['point_value']}}</td>
-          </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </div>
+<table class="table">
+  <thead>
+    <tr>
+      <th scope="col">Rule</th>
+      <th scope="col">Point Value</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for rule in rules %}
+      <tr>
+        <th scope="row">{{rule['name']}}</th>
+        <td>{{rule['point_value']}}</td>
+      </tr>
+    {% endfor %}
+  </tbody>
+</table>
 {% endblock %}

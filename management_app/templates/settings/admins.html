@@ -24,96 +24,94 @@
 {% endblock %}
 
 {% block content %}
-  <div class="container">
-    <div class="d-grid justify-content-end">
-      <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addModal">+ Add Admin</button>
-    </div>
-    <table class="table">
-      <thead>
-        <tr>
-          <th scope="col">Name</th>
-          <th scope="col">Email</th>
-          <th scope="col"></th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for admin in admins %}
-          <tr>
-            <th scope="row">{{admin['name']}} {% if admin == current_user %}<span class="badge text-bg-primary">You</span>{% endif %}</th>
-            <td>{{admin['email']}}</td>
-            <td>
-              <div class="dropdown d-grid justify-content-end">
-                <button class="btn btn-secondary fw-bold" type="button" data-bs-toggle="dropdown" aria-expanded="false">⋮</button>
-                <ul class="dropdown-menu">
-                  <li>
-                    <button type="button" class="dropdown-item" data-bs-toggle="modal" data-bs-target="{{'#deleteModalSelf' if admin == current_user else '#deleteModal'}}">
-                      <i class="fa-solid fa-trash"></i></i> Delete
-                    </button>
-                  </li>
-                </ul>
-              </div>
-            </td>
-          </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-    <div class="modal fade" id="addModal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-labelledby="addModalTitle" aria-hidden="true">
-      <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-          <div class="modal-header">
-            <h1 class="modal-title fs-5" id="addModalTitle">Add Admin</h1>
-            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+<div class="d-grid justify-content-end">
+  <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addModal">+ Add Admin</button>
+</div>
+<table class="table">
+  <thead>
+    <tr>
+      <th scope="col">Name</th>
+      <th scope="col">Email</th>
+      <th scope="col"></th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for admin in admins %}
+      <tr>
+        <th scope="row">{{admin['name']}} {% if admin == current_user %}<span class="badge text-bg-primary">You</span>{% endif %}</th>
+        <td>{{admin['email']}}</td>
+        <td>
+          <div class="dropdown d-grid justify-content-end">
+            <button class="btn btn-secondary fw-bold" type="button" data-bs-toggle="dropdown" aria-expanded="false">⋮</button>
+            <ul class="dropdown-menu">
+              <li>
+                <button type="button" class="dropdown-item" data-bs-toggle="modal" data-bs-target="{{'#deleteModalSelf' if admin == current_user else '#deleteModal'}}">
+                  <i class="fa-solid fa-trash"></i></i> Delete
+                </button>
+              </li>
+            </ul>
           </div>
-          <div class="modal-body">
-            <label for="userSelect">Select a user to make an admin</label>
-            <select class="form-select" id="userSelect" aria-label="User Selection">
-              <option selected>Select a user</option>
-              {% for user in users %}
-                <option value="{{user['name']}}">{{user['name']}}</option>
-              {% endfor %}
-            </select>
-          </div>
-          <div class="modal-footer">
-            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-            <!-- TODO enable button when a user is selected -->
-            <button type="button" class="btn btn-primary" disabled>Add Admin</button>
-          </div>
-        </div>
+        </td>
+      </tr>
+    {% endfor %}
+  </tbody>
+</table>
+<div class="modal fade" id="addModal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-labelledby="addModalTitle" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h1 class="modal-title fs-5" id="addModalTitle">Add Admin</h1>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
-    </div>
-    <div class="modal fade" id="deleteModal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-labelledby="deleteModalTitle" aria-hidden="true">
-      <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-          <div class="modal-header">
-            <h1 class="modal-title fs-5" id="deleteModalTitle">Delete Admin</h1>
-            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-          </div>
-          <div class="modal-body">
-            <p>Are you sure you want to delete this admin?</p>
-          </div>
-          <div class="modal-footer">
-            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">No</button>
-            <button type="button" class="btn btn-primary">Yes</button>
-          </div>
-        </div>
+      <div class="modal-body">
+        <label for="userSelect">Select a user to make an admin</label>
+        <select class="form-select" id="userSelect" aria-label="User Selection">
+          <option selected>Select a user</option>
+          {% for user in users %}
+            <option value="{{user['name']}}">{{user['name']}}</option>
+          {% endfor %}
+        </select>
       </div>
-    </div>
-    <div class="modal fade" id="deleteModalSelf" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-labelledby="deleteModalSelfTitle" aria-hidden="true">
-      <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-          <div class="modal-header">
-            <h1 class="modal-title fs-5" id="deleteModalSelfTitle">Delete My Account</h1>
-            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-          </div>
-          <div class="modal-body">
-            <p>Are you sure you want to delete your account? This action cannot be undone.</p>
-          </div>
-          <div class="modal-footer">
-            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">No</button>
-            <button type="button" class="btn btn-primary">Yes</button>
-          </div>
-        </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+        <!-- TODO enable button when a user is selected -->
+        <button type="button" class="btn btn-primary" disabled>Add Admin</button>
       </div>
     </div>
   </div>
+</div>
+<div class="modal fade" id="deleteModal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-labelledby="deleteModalTitle" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h1 class="modal-title fs-5" id="deleteModalTitle">Delete Admin</h1>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <p>Are you sure you want to delete this admin?</p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">No</button>
+        <button type="button" class="btn btn-primary">Yes</button>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="modal fade" id="deleteModalSelf" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-labelledby="deleteModalSelfTitle" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h1 class="modal-title fs-5" id="deleteModalSelfTitle">Delete My Account</h1>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <p>Are you sure you want to delete your account? This action cannot be undone.</p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">No</button>
+        <button type="button" class="btn btn-primary">Yes</button>
+      </div>
+    </div>
+  </div>
+</div>
 {% endblock %}
