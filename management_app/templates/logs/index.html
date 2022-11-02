@@ -1,0 +1,72 @@
+{% extends 'base.html' %}
+
+{% block title %}Logs{% endblock %}
+{% block header %}Exceptions logs{% endblock %}
+
+{% block content %}
+<nav>
+    <div class="nav nav-tabs" id="nav-tab" role="tablist">
+        <a class="nav-item nav-link " id="tab-exception" data-toggle="tab" href="/logs" role="tab"
+           aria-controls="content-exception" aria-selected="true">Exceptions</a>
+        <a class="nav-item nav-link " id="tab-general" data-toggle="tab" href="/logs/general" role="tab"
+           aria-controls="content-general" aria-selected="false">General</a>
+    </div>
+</nav>
+
+<div class="row" style="margin: 20px 0;">
+
+
+    <div class="panel-footer" style="height:780px; overflow: auto;">
+        <table
+                id="table-exception"
+                data-filter-control="true"
+                data-show-search-clear-button="true"
+                data-sortable="true"
+                data-height="780"
+                searchOnEnterKey="true"
+                data-pagination="false"
+                data-show-columns="false"
+                class="table-responsive"
+                classes="table-sm"
+        >
+            <thead>
+            <tr>
+                <th data-field="timeStamp" data-filter-control="datepicker" data-sortable="True"
+                    data-filter-order-by="desc">Time Stamp
+                </th>
+                <th data-field="owner" data-filter-control="select" data-sortable="True">Owner</th>
+                <th data-field="affected" data-filter-control="select" data-sortable="True">Affected Faculty
+                    Member
+                </th>
+                <th data-field="exception" data-filter-control="select" data-sortable="True">Exception
+                    Category
+                </th>
+                <th data-field="reason" data-filter-control="input" data-sortable="True">Reason</th>
+
+            </tr>
+            </thead>
+            <tbody>
+            {% for exception_log in exception_logs %}
+            <tr>
+                <td>{{ exception_log['timeStamp'] }}</td>
+                <td>{{ exception_log['owner'] }}</td>
+                <td>{{ exception_log['affected'] }}</td>
+                <td>{{ exception_log['exception'] }}</td>
+                <td>{{ exception_log['reason'] }}</td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+    $(function () {
+        $('#table-exception').bootstrapTable()
+    })
+</script>
+{% endblock scripts %}

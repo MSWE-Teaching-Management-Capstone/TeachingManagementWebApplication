@@ -5,8 +5,10 @@ from dotenv import load_dotenv
 from . import db
 from .views.auth import auth
 from .views.faculty import faculty
+from .views.logs import logs
 from .views.settings import settings
 from .views.course import courses
+
 
 load_dotenv('.flaskenv')
 load_dotenv('.env')
@@ -36,8 +38,10 @@ def create_app(test_config=None):
 
     app.register_blueprint(auth)
     app.register_blueprint(faculty) # temporarily render faculty views under url_prefix='/faculty'
+    app.register_blueprint(logs) # temporarily render logs views under exception tab with url_prefix='/logs'
     app.register_blueprint(settings) # temporarily render settings views under url_prefix='/settings'
     app.register_blueprint(courses)
+
 
 
     @app.route('/')
