@@ -1,9 +1,10 @@
-from flask import (Blueprint, render_template, send_from_directory)
+from flask import Flask, Blueprint, send_from_directory, render_template, request, redirect, url_for
+from werkzeug.utils import secure_filename
 
 from management_app.views.auth import login_required
+from management_app.views.utils import download_file, upload_file, remove_upload_file
 
 faculty = Blueprint('faculty', __name__, url_prefix='/faculty')
-
 
 @faculty.route('/')
 @login_required
@@ -22,6 +23,20 @@ def index():
 
 @faculty.route('/data-templates/<filename>')
 @login_required
-def download_file(filename):
-    path = 'static/data_templates'
-    return send_from_directory(path, filename, as_attachment=True)
+def download_template(filename):
+    return download_file(filename)
+
+
+@faculty.route('/upload', methods=['POST'])
+@login_required
+def upload_user_template():
+    if (request.method == 'POST'):
+        file = request.files['facultyTemplate']
+        filename = secure_filename(file.filename)
+        upload_file(file)
+
+        # TODO: process spreadsheet and store in database
+
+        remove_upload_file(file)
+
+        return redirect(url_for('faculty.index'))

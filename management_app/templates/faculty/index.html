@@ -81,44 +81,48 @@
 <div class="modal fade" id="importChange" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-labelledby="importChangeLabel" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content">
-      <div class="modal-header">
-        <h1 class="modal-title fs-5" id="importChangeLabel">Add and/or edit faculty using the import template and upload it here.</h1>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-      </div>
-      <div class="modal-body">
-        <div class="row" style="margin: 10px 0;">
-          <div class="col">
-            <a href="{{ url_for('faculty.download_file', filename='users_template.xlsx') }}">
-              <button type="button" class="btn btn-primary">
-                <i class="fa-solid fa-download"></i>
-                Download Users Data Template
-              </button>
-            </a>
+      <form method="POST" action="/faculty/upload" enctype="multipart/form-data">
+        <div class="modal-header">
+          <h1 class="modal-title fs-5" id="importChangeLabel">Add and/or edit faculty using the import template and upload it here.</h1>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <div class="row" style="margin: 10px 0;">
+            <div class="col">
+              <a href="{{ url_for('faculty.download_template', filename='users_template.xlsx') }}">
+                <button type="button" class="btn btn-primary">
+                  <i class="fa-solid fa-download"></i>
+                  Download Users Data Template
+                </button>
+              </a>
+            </div>
+          </div>
+          <div class="row" style="margin: 10px 0;">
+            <div class="col">
+              <a href="{{ url_for('faculty.download_template', filename='professors_point_info_template.xlsx') }}">
+                <button type="button" class="btn btn-primary">
+                  <i class="fa-solid fa-download"></i>
+                  Download Professor Point Info Data Template
+                </button>
+              </a>
+            </div>
+          </div>
+          <div class="row" style="margin: 40px 0;">
+            <div class="col">
+              <div class="input-group mb-3">
+                <p>Upload users template OR professor point info template</p>
+                <div>
+                  <input type="file" name="facultyTemplate" class="form-control" id="uploadFacultyTemplate">
+                </div>
+              </div>
+            </div>
           </div>
         </div>
-        <div class="row" style="margin: 10px 0;">
-          <div class="col">
-            <a href="{{ url_for('faculty.download_file', filename='professors_point_info_template.xlsx') }}">
-              <button type="button" class="btn btn-primary">
-                <i class="fa-solid fa-download"></i>
-                Download Professor Point Info Data Template
-              </button>
-            </a>
-          </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary" id="submitFacultyTemplate" disabled>Import Changes</button>
         </div>
-        <div class="row" style="margin: 10px 0;">
-          <div class="col">
-            <button type="button" class="btn btn-outline-primary">
-              Upload users template OR professor point info template
-            </button>
-          </div>
-        </div>
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-        <!-- ToDo: Only Enable import changes button after user uploades the file -->
-        <button type="button" class="btn btn-primary" disabled>Import Changes</button>
-      </div>
+      </form>
     </div>
   </div>
 </div>
@@ -126,5 +130,13 @@
 
 {% block scripts %}
 <script>
+  const templateUploadInput = document.getElementById("uploadFacultyTemplate");
+  const templateSubmitButton = document.getElementById("submitFacultyTemplate")
+  templateUploadInput.onchange = function() {
+  const input = this.files[0];
+  if (input) {
+    templateSubmitButton.disabled = false;
+  }
+};
 </script>
 {% endblock scripts %}

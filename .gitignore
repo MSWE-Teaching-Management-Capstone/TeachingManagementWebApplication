@@ -31,3 +31,5 @@ htmlcov/
 .coverage
 .coverage.*
 *,cover
+
+management_app/static/upload_files/*
