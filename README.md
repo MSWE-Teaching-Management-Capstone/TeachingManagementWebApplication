@@ -32,9 +32,11 @@ set FLASK_DEBUG='true'
 ```shell
 # Linus/MacOS
 export GOOGLE_CLIENT_ID='559245110133-8bog3pa5k75ih9q1fkkauiv8latmbgjf.apps.googleusercontent.com'
+export DOMAIN="uci.edu"
 
 # Windows
 set GOOGLE_CLIENT_ID='559245110133-8bog3pa5k75ih9q1fkkauiv8latmbgjf.apps.googleusercontent.com'
+set DOMAIN="uci.edu"
 ```
 
 > Note that the `.flaskenv` and `.env` file will store at your local instead of repository. We can discuss if we would like to publish this file when we deploy.

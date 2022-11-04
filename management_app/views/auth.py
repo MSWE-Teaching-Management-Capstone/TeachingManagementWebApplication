@@ -29,7 +29,7 @@ def login_required(view):
     @functools.wraps(view)
     def wrapped_view(**kwargs):
         if "google_id" not in session:
-            return redirect(url_for('auth.login'))
+            return redirect(url_for('auth.index'))
 
         return view(**kwargs)
 
@@ -38,7 +38,7 @@ def login_required(view):
 
 @auth.route("/")
 def index():
-    return render_template("login.html")
+    return render_template("login.html", has_alert=request.args.get("has_alert", False))
 
 
 @auth.route("/login")
@@ -74,6 +74,13 @@ def login_callback():
 
     session["google_id"] = id_info.get("sub")
     session["name"] = id_info.get("name")
+    session["domain"] = id_info.get("hd", "-1")
+
+    # verify the domain of email comes from UCI
+    if session["domain"] != os.getenv("DOMAIN", ""):
+        session.clear()
+        return redirect(url_for('auth.index', has_alert=True))
+
     return redirect(url_for('auth.redirect_to_homepage'))
 
 
