@@ -13,9 +13,13 @@ faculty = Blueprint('faculty', __name__, url_prefix='/faculty')
 @login_required
 def index():
     if request.method == 'GET':
-        #TODO: this will change dynamically later
-        years = ['2020-2021', '2019-2020']
-        faculties = get_professor_point_by_year(2020) # temporarily set current year 2020
+        years = get_professor_point_year_ranges()
+        if ((len(years)) == 0):
+            faculties = []
+        else:
+            yearSelect = years[0] or request.args.get('year')
+            year = yearSelect.split('-')[0]
+            faculties = get_professor_point_by_year(year)
         return render_template('faculty/index.html', faculties=faculties, years=years)
 
 @faculty.route('/data-templates/<filename>', methods=['GET'])
@@ -124,6 +128,19 @@ def get_exist_professor_point_info(user_id):
     return db.execute(
         'SELECT * FROM professors_point_info WHERE user_id = ?', (user_id,)
     ).fetchone()
+
+def get_professor_point_year_ranges():
+    year_options = []
+    db = get_db()
+    rows = db.execute(
+        'SELECT DISTINCT year FROM professors_point_info'
+        ' ORDER BY year DESC'
+    ).fetchall()
+    for row in rows:
+        year = row['year']
+        option = str(year) + '-' + str(year+1)
+        year_options.append(option)
+    return year_options
 
 def get_professor_point_by_year(year):
     faculties = []

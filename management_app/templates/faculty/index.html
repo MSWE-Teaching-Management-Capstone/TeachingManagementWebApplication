@@ -7,10 +7,12 @@
 <div class="row">
   <div class="col-3">
     <form class="d-flex">
-      <label class="align-self-center" for="yearSelect">Year:&nbsp;</label>
-      <select class="form-select align-self-center" id="yearSelect" aria-label="Year Select" name="yearSelect">
+      <label class="align-self-center" for="year">Year:&nbsp;</label>
+      <select class="form-select align-self-center" id="year" aria-label="Year Select" name="year">
         {% for year in years %}
-        <option value="{{ year }}">{{ year }}</option>
+        <option
+          value="{{ year }}" {% if request.args.get('year')==year %} selected="selected"{% endif %}>{{ year }}
+        </option>
         {% endfor %}
       </select>&nbsp;
       <button type="submit" class="btn btn-outline-primary" id="submitFilterByYear">Filter</button>
