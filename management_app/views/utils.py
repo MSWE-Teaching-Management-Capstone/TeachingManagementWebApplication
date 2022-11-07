@@ -1,5 +1,4 @@
 import os
-from os.path import join, dirname
 from flask import send_from_directory
 from werkzeug.utils import secure_filename
 

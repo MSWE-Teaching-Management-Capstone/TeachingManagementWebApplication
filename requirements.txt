@@ -31,3 +31,5 @@ tomli==2.0.1
 urllib3==1.26.12
 Werkzeug==2.2.2
 zipp==3.8.1
+pandas==1.5.1
+openpyxl==3.0.10
