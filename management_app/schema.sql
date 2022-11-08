@@ -16,12 +16,12 @@ CREATE TABLE users (
 );
 
 CREATE TABLE users_status (
-  start_year INTEGER,
   user_id INTEGER,
-  end_year INTEGER,  
+  start_year INTEGER,
+  end_year INTEGER,
   active_status INTEGER NOT NULL,
   user_role TEXT NOT NULL,
-  PRIMARY KEY (start_year, user_id),
+  PRIMARY KEY (user_id, start_year),
   FOREIGN KEY (user_id) REFERENCES users (user_id)
 );
 

@@ -5,13 +5,16 @@
 
 {% block content %}
 <div class="row">
+  <div>
+  </div>
   <div class="col-3">
     <form class="d-flex">
       <label class="align-self-center" for="year">Year:&nbsp;</label>
       <select class="form-select align-self-center" id="year" aria-label="Year Select" name="year">
-        {% for year in years %}
+        {% for option in year_options %}
         <option
-          value="{{ year }}" {% if request.args.get('year')==year %} selected="selected"{% endif %}>{{ year }}
+          value="{{ option }}" {% if request.args.get('year') == year or request.args.get('year') == None %} selected="selected"{% endif %}>
+          {{ option }}
         </option>
         {% endfor %}
       </select>&nbsp;
@@ -31,8 +34,6 @@
           </button>
           <ul class="dropdown-menu">
             <li><a class="dropdown-item" href="#"><i class="fa-solid fa-plus"></i> Add Faculty Member</a></li>
-            <!-- TODO: Rollback only shows after upload in current session -->
-            <li><a class="dropdown-item" href="#"><i class="fa-solid fa-rotate-right"></i> Rollback Previous Change</a></li>
           </ul>
         </div>
       </div>
@@ -93,7 +94,7 @@
         <div class="modal-body">
           <div class="row" style="margin: 10px 0;">
             <div class="col">
-              <a href="{{ url_for('faculty.download_template', filename='users_template.xlsx') }}">
+              <a href="{{ url_for('faculty.download_template', filename='users.xlsx') }}">
                 <button type="button" class="btn btn-primary">
                   <i class="fa-solid fa-download"></i>
                   Download Users Data Template
@@ -103,7 +104,7 @@
           </div>
           <div class="row" style="margin: 10px 0;">
             <div class="col">
-              <a href="{{ url_for('faculty.download_template', filename='professors_point_info_template.xlsx') }}">
+              <a href="{{ url_for('faculty.download_template', filename='professors_point_info.xlsx') }}">
                 <button type="button" class="btn btn-primary">
                   <i class="fa-solid fa-download"></i>
                   Download Professor Point Info Data Template
@@ -126,17 +127,7 @@
               <div class="form-check">
                 <input class="form-check-input" type="radio" name="templateUploadOptions" id="addUsersTemplate" value="addUsers">
                 <label class="form-check-label" for="addUsersTemplate">
-                  Add Users Template
-                </label>
-              </div>
-            </div>
-          </div>
-          <div class="row">
-            <div class="col">
-              <div class="form-check">
-                <input class="form-check-input" type="radio" name="templateUploadOptions" id="editUsersTemplate" value="editUsers">
-                <label class="form-check-label" for="editUsersTemplate">
-                  Edit Users Template
+                  Create Users by Template
                 </label>
               </div>
             </div>
@@ -146,17 +137,7 @@
               <div class="form-check">
                 <input class="form-check-input" type="radio" name="templateUploadOptions" id="addProfessorPointTemplate" value="addProfessors">
                 <label class="form-check-label" for="addProfessorPointTemplate">
-                  Add Professors Point Info Template
-                </label>
-              </div>
-            </div>
-          </div>
-          <div class="row">
-            <div class="col">
-              <div class="form-check">
-                <input class="form-check-input" type="radio" name="templateUploadOptions" id="editProfessorPointTemplate" value="editProfessors">
-                <label class="form-check-label" for="editProfessorPointTemplate">
-                  Edit Professors Point Info Template
+                  Create Professors Point Info by Template
                 </label>
               </div>
             </div>
