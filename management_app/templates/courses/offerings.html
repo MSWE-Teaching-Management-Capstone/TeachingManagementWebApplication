@@ -31,25 +31,28 @@
 
 {% block content %}
 <div class="row">
-  <div class="col-2">
-    <div class="d-flex">
-      <label class="align-self-center" for="yearSelect">Year:&nbsp;</label>
-      <select class="form-select align-self-center mt-2" id="yearSelect" aria-label="Year Select">
-        <!-- TODO: dynamic period -->
-        <option selected>2020-2021</option>
-        <option selected>2019-2020</option>
-      </select>
-    </div>
+  <div class="col-3">
+    <form class="d-flex">
+      <label class="align-self-center mt-3" for="year">Year:&nbsp;</label>
+      <select class="form-select align-self-center mt-3" id="year" aria-label="Year Select" name="year">
+        {% for option in year_options %}
+        <option
+          value="{{ option }}" {% if request.args.get('year')==option or request.args.get('year')==None %} selected="selected"{% endif %}>{{ option }}
+        </option>
+        {% endfor %}
+      </select>&nbsp;
+      <button type="submit" class="btn btn-outline-primary mt-3" id="submitFilterByYear">Filter</button>
+     </form>
   </div>
-  <div class="col-10">
+  <div class="col-9">
     <div class="d-grid justify-content-end">
       <div class="d-inline-flex">
-        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#importChange">
+        <button type="button" class="btn btn-primary mt-3" data-bs-toggle="modal" data-bs-target="#importChange">
           <i class="fa-solid fa-download"></i>
           Import Changes
         </button>
         <div class="dropdown" style="margin-left: 20px;">
-          <button class="btn btn-secondary fw-bold" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+          <button class="btn btn-secondary fw-bold mt-3" type="button" data-bs-toggle="dropdown" aria-expanded="false">
             ⋮
           </button>
           <ul class="dropdown-menu">
@@ -62,7 +65,7 @@
   </div>
 </div>
 
-<table class="table mt-2">
+<table class="table mt-3">
   <thead>
     <tr>
       <th scope="col">Year</th>
@@ -103,7 +106,7 @@
 <div class="modal fade" id="importChange" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-labelledby="importChangeLabel" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content">
-      <form method="POST" action="/courses/upload" enctype="multipart/form-data">
+      <form method="POST" action="{{ url_for('courses.upload_user_file') }}" enctype="multipart/form-data">
         <div class="modal-header">
           <h1 class="modal-title fs-5" id="importChangeLabel">Add and/or edit course offerings using the import template and upload it here.</h1>
           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
@@ -119,7 +122,7 @@
               </a>
             </div>
           </div>          
-          <div class="row" style="margin: 40px 0;">
+          <div class="row" style="margin-top: 40px;">
             <div class="col">
               <div class="input-group mb-3">
                 <p>Upload course offerings template</p>
