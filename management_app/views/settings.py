@@ -1,37 +1,36 @@
-from flask import Blueprint, render_template
+from flask import Blueprint, render_template, session
 
 from management_app.views.auth import login_required
+from management_app.db import get_db
 
 settings = Blueprint('settings', __name__, url_prefix='/settings')
 
 @settings.route('/admins')
 @login_required
 def admins():
-    # TODO get data from database
-    admins = [
-        {'name': 'Admin A', 'email': 'profA@uci.edu'},
-        {'name': 'Staff B', 'email': 'staffB@uci.edu'},
-        {'name': 'Staff C', 'email': 'staffC@uci.edu'}
-    ]
-    users = [
-        {'name': 'User A'},
-        {'name': 'User B'},
-        {'name': 'User C'}
-    ]
+    db = get_db()
+    admins = []
+    users = []
+
+    for user in db.execute('SELECT * FROM users').fetchall():
+        if user['admin']:
+            admins.append(user)
+        else:
+            users.append(user)
+    
+    user_email = session['email']
+    current_user = next(admin for admin in admins if admin['user_email'] == user_email)
+
     return render_template(
-        'settings/admins.html',
+        'settings/index.html',
         admins=admins,
-        current_user=admins[0],
+        current_user=current_user,
         users=users
     )
 
 @settings.route('/point-policy')
 @login_required
 def point_policy():
-    # TODO get data from database
-    rules = [
-        {'name': 'Rule 1', 'point_value': 1},
-        {'name': 'Rule 2', 'point_value': 0.5},
-        {'name': 'Rule 3', 'point_value': 1.5}
-    ]
+    db = get_db()
+    rules = db.execute('SELECT rule_name, points FROM points_constant').fetchall()
     return render_template('settings/point-policy.html', rules=rules)

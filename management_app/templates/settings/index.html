@@ -38,8 +38,8 @@
   <tbody>
     {% for admin in admins %}
       <tr>
-        <th scope="row">{{admin['name']}} {% if admin == current_user %}<span class="badge text-bg-primary">You</span>{% endif %}</th>
-        <td>{{admin['email']}}</td>
+        <th scope="row">{{admin['user_name']}} {% if admin == current_user %}<span class="badge text-bg-primary">You</span>{% endif %}</th>
+        <td>{{admin['user_email']}}</td>
         <td>
           <div class="dropdown d-grid justify-content-end">
             <button class="btn btn-secondary fw-bold" type="button" data-bs-toggle="dropdown" aria-expanded="false">⋮</button>
@@ -68,7 +68,7 @@
         <select class="form-select" id="userSelect" aria-label="User Selection">
           <option selected>Select a user</option>
           {% for user in users %}
-            <option value="{{user['name']}}">{{user['name']}}</option>
+            <option value="{{user['user_id']}}">{{user['user_name']}} ({{user['user_ucinetid']}})</option>
           {% endfor %}
         </select>
       </div>
