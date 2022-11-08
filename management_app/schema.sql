@@ -47,15 +47,15 @@ CREATE TABLE courses (
 
 CREATE TABLE scheduled_teaching (
   user_id INTEGER,
-  course_id INTEGER,
+  course_code INTEGER,  
   year INTEGER,
   quarter INTEGER,
-  course_code INTEGER NOT NULL,
+  course_id INTEGER NOT NULL,
   course_type TEXT NOT NULL,
   course_sec TEXT NOT NULL,
   enrollment INTEGER,
   offload_or_recall_flag TEXT,
-  PRIMARY KEY (user_id, course_id, year, quarter),
+  PRIMARY KEY (user_id, course_code, year, quarter),
   FOREIGN KEY (user_id) REFERENCES users (user_id),
   FOREIGN KEY (course_id) REFERENCES courses (course_id)
 );
