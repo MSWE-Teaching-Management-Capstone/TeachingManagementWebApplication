@@ -17,13 +17,21 @@ courses = Blueprint('courses', __name__, url_prefix='/courses')
 @login_required
 def offerings():
     if request.method == 'GET':
+        db = get_db()
+        
         # generate year options
-        todays_date = date.today()  # creating the date object of today's date
-        years = list(range(2019, todays_date.year+1))  # [2019, 2020, 2021, 2022]
-        year_options = [str(y) + '-' + str(y+1) for y in years]  # ['2019-2020', '2020-2021', '2021-2022', '2022-2023']
+        year_options = []        
+        rows = db.execute(
+            'SELECT DISTINCT year FROM scheduled_teaching ORDER BY year DESC'
+        ).fetchall()
+        y_start = rows[0]['year']
+        y_end = y_start + 1
+        for row in rows:
+            year = row['year']
+            year_options.append(str(year) + '-' + str(year+1))
 
-        db = get_db() 
-        y_start, y_end = todays_date.year, todays_date.year+1
+        # todays_date = date.today()  # creating the date object of today's date        
+        # y_start, y_end = todays_date.year, todays_date.year + 1
         year_selected = request.args.get('year')  # 2020-2021 (including: 2020 Fall - 2021 Winter & Spring)
         if year_selected != None:
             y_start = year_selected.split('-')[0]
@@ -63,7 +71,10 @@ def catalog():
         #     )
         #     db.commit()
 
-        # TODO: haven't calculate "teaching_point_val" column
+
+        # TODO: should give the default teaching_point_val = 1 for each course
+        
+
 
         return render_template('courses/catalog.html')
 
@@ -73,8 +84,9 @@ def catalog():
 def download_template(filename):
 
     # TODO: do template Prefill: 
-    # Schedule_teaching table prepopulate: year, quarter, usename, ucinetid, 
-    # course_type： Lec, course_sec: A (each prodessor 3 rows: fall, winter, spring)
+    # Schedule_teaching template prepopulate: year, quarter, usename, ucinetid, 
+        # course_type： Lec, course_sec: A (each prodessor 3 rows: fall, winter, spring)
+    # courses template: no need to prepopulate
 
     if request.method == 'GET':
         return download_file(filename)
@@ -95,18 +107,16 @@ def upload_user_file():
             quarter = row[1]
             if quarter in quarterDict.keys():
                 quarter = quarterDict[quarter]
-            user_UCINetID = row[2].strip()
-            course_code = row[3]
+            user_UCINetID = row[2].strip()            
 
             # course_title_id column may be like "CS 143B" or "CS143B" -> all convert to "CS143B"
-            course_title_id = row[4].strip().replace(' ', '')
-
-            course_type = row[5].strip()
-            # course_type = "Lec"
-            course_sec = row[6].strip()
+            course_title_id = row[3].strip().replace(' ', '')
+            
+            course_sec = row[4].strip()
             # course_sec = 'A'
-            num_of_enrollment = row[7]
-            offload_or_recall_flag = row[8]
+            # TODO: if no num_of_enrollment -> show “-” or “?” in the frontend
+            num_of_enrollment = row[5]
+            offload_or_recall_flag = row[6]
             
             user_id = None
             # use "user_UCINetID" in s_t file to get user_id in users table
@@ -116,26 +126,32 @@ def upload_user_file():
                 ' WHERE user_ucinetid = ?', (user_UCINetID,)
             ).fetchone()
             if row != None:
-                user_id = row[0]
+                user_id = row[0]           
             
-            course_id = None
-            # use "course_title_id" in s_t file to get course_id in courses table
-            row = db.execute(
-                'SELECT course_id FROM courses'
-                ' WHERE course_title_id = ?', (course_title_id,)
-            ).fetchone()
-            if row != None:
-                course_id = row[0]
+
+            # TODO: if not exist-> add; if exist-> update
+
 
             db.execute(
-                'INSERT INTO scheduled_teaching (user_id, course_code, year, quarter, course_id, course_type, course_sec, enrollment, offload_or_recall_flag)'
-                ' VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
-                (user_id, course_code, year, quarter, course_id, course_type, course_sec, num_of_enrollment, offload_or_recall_flag)
+                'INSERT INTO scheduled_teaching (user_id, year, quarter, course_title_id, course_sec, enrollment, offload_or_recall_flag)'
+                ' VALUES (?, ?, ?, ?, ?, ?, ?)',
+                (user_id, year, quarter, course_title_id, course_sec, num_of_enrollment, offload_or_recall_flag)
             )
             db.commit()      
         
         remove_upload_file(file)
         
+        # TODO: if enrollment got updated -> update related courses' "teaching_point_val" column
+        # TODO: haven't calculate "teaching_point_val" column
+            # calculate teaching_point_val according to category (3 input) (write this function in the point.py and call it here)
+                # calculate rules: 
+                    # * category 0: 4+2 credit ? Ans: 6 units
+                    # * category 2: onload ?
+                        # note: "CS297P" -> this is P course
+                        #     if P course -> if offload_or_recall_flag is 0 then get 1 point; if offload_or_recall_flag is 1 then get 0 point
+                        #     if not P course -> give points according to category
+
+        # TODO: after upload enrollment -> call calculate teaching_point_val -> call calculate professor's point (ying-ru)  (write it in the point.py)
         # TODO: call recaculation API (written by Ying-ru) (files may or may not contain numbers of enrollment)        
 
         return redirect(url_for('courses.offerings'))

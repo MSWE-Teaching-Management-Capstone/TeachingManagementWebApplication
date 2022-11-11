@@ -16,11 +16,12 @@ CREATE TABLE users (
 );
 
 CREATE TABLE users_status (
+  start_year INTEGER,
   user_id INTEGER,
-  year INTEGER,
-  user_role TEXT NOT NULL,
+  end_year INTEGER,  
   active_status INTEGER NOT NULL,
-  PRIMARY KEY (user_id, year),
+  user_role TEXT NOT NULL,
+  PRIMARY KEY (start_year, user_id),
   FOREIGN KEY (user_id) REFERENCES users (user_id)
 );
 
@@ -47,17 +48,15 @@ CREATE TABLE courses (
 
 CREATE TABLE scheduled_teaching (
   user_id INTEGER,
-  course_code INTEGER,  
   year INTEGER,
   quarter INTEGER,
-  course_id INTEGER NOT NULL,
-  course_type TEXT NOT NULL,
-  course_sec TEXT NOT NULL,
+  course_title_id TEXT,
+  course_sec TEXT,
   enrollment INTEGER,
-  offload_or_recall_flag TEXT,
-  PRIMARY KEY (user_id, course_code, year, quarter),
+  offload_or_recall_flag INTEGER,
+  PRIMARY KEY (user_id, year, quarter, course_title_id, course_sec),
   FOREIGN KEY (user_id) REFERENCES users (user_id),
-  FOREIGN KEY (course_id) REFERENCES courses (course_id)
+  FOREIGN KEY (course_title_id) REFERENCES courses (course_title_id)
 );
 
 CREATE TABLE exceptions (
