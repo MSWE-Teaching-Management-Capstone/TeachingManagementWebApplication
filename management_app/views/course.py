@@ -56,25 +56,25 @@ def offerings():
 @login_required
 def catalog():
     if request.method == 'GET':
-        # # Initial courses table: parse input file and insert data into db only for the first time
-        # db = get_db()
+        # Initial courses table: parse input file and insert data into db only for the first time
+        db = get_db()
 
-        # df = pd.read_excel(get_upload_filepath("courses.xlsx"), sheet_name=1)
-        # rows = df.values.tolist()   
-        # for row in rows:
-        #     # course_title_id column may be like "CS 143B" or "CS143B" -> all convert to "CS143B"
-        #     course_title_id = row[0].strip().replace(' ', '')
+        df = pd.read_excel(get_upload_filepath("courses.xlsx"), sheet_name=1)
+        rows = df.values.tolist()   
+        for row in rows:
+            # course_title_id column may be like "CS 143B" or "CS143B" -> all convert to "CS143B"
+            course_title_id = row[0].strip().replace(' ', '')
 
-        #     course_title = row[1].strip()
-        #     units = row[2]            
-        #     course_level = row[3].strip()           
+            course_title = row[1].strip()
+            units = row[2]            
+            course_level = row[3].strip()           
 
-        #     db.execute(
-        #         'INSERT INTO courses (course_title_id, course_title, units, course_level)'
-        #         ' VALUES (?, ?, ?, ?)',
-        #         (course_title_id, course_title, units, course_level)
-        #     )
-        #     db.commit()        
+            db.execute(
+                'INSERT INTO courses (course_title_id, course_title, units, course_level)'
+                ' VALUES (?, ?, ?, ?)',
+                (course_title_id, course_title, units, course_level)
+            )
+            db.commit()        
 
 
         return render_template('courses/catalog.html')
@@ -116,6 +116,8 @@ def upload_user_file():
             course_sec = row[4].strip()
             num_of_enrollment = row[5]
             offload_or_recall_flag = row[6]
+            if offload_or_recall_flag is None:
+                offload_or_recall_flag = 0
             
             
             user_id = None
@@ -130,8 +132,6 @@ def upload_user_file():
             if row != None:
                 user_id = row[0]           
             
-
-
             # TODO:
             if num_of_enrollment is None:
                 teaching_point_val = 1  # default value is 1 for each course

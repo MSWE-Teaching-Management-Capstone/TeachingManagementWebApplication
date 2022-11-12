@@ -39,7 +39,7 @@ CREATE TABLE professors_point_info (
 
 CREATE TABLE courses (
   course_id INTEGER PRIMARY KEY,  -- AUTOINCREMENT
-  course_title_id TEXT NOT NULL,
+  course_title_id TEXT UNIQUE NOT NULL,
   course_title TEXT NOT NULL,
   units INTEGER NOT NULL,
   course_level TEXT
