@@ -96,13 +96,16 @@ def download_template(filename):
 @login_required
 def upload_user_file():
     if (request.method == 'POST'):
-        file = request.files['courseTemplate'] 
-        upload_file(file)        
+        file = request.files['courseTemplate']
+        filename = secure_filename(file.filename)
+        file_path = get_upload_filepath(filename)
+        upload_file(file)
+
         quarterDict = {"Fall": 1, "Winter": 2, "Spring": 3, "Summer": 4}
         db = get_db()
 
-        df = pd.read_excel(get_upload_filepath(file.filename), sheet_name=1)
-        rows = df.values.tolist()   
+        df = pd.read_excel(file_path, sheet_name=1)
+        rows = df.values.tolist()
         for row in rows:
             year = row[0]
             quarter = row[1]
