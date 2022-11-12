@@ -42,7 +42,6 @@ CREATE TABLE courses (
   course_title_id TEXT NOT NULL,
   course_title TEXT NOT NULL,
   units INTEGER NOT NULL,
-  teaching_point_val REAL,
   course_level TEXT
 );
 
@@ -54,6 +53,7 @@ CREATE TABLE scheduled_teaching (
   course_sec TEXT,
   enrollment INTEGER,
   offload_or_recall_flag INTEGER,
+  teaching_point_val REAL,
   PRIMARY KEY (user_id, year, quarter, course_title_id, course_sec),
   FOREIGN KEY (user_id) REFERENCES users (user_id),
   FOREIGN KEY (course_title_id) REFERENCES courses (course_title_id)
