@@ -16,12 +16,12 @@ CREATE TABLE users (
 );
 
 CREATE TABLE users_status (
-  start_year INTEGER,
   user_id INTEGER,
-  end_year INTEGER,  
+  start_year INTEGER,
+  end_year INTEGER,
   active_status INTEGER NOT NULL,
   user_role TEXT NOT NULL,
-  PRIMARY KEY (start_year, user_id),
+  PRIMARY KEY (user_id, start_year),
   FOREIGN KEY (user_id) REFERENCES users (user_id)
 );
 
@@ -39,10 +39,9 @@ CREATE TABLE professors_point_info (
 
 CREATE TABLE courses (
   course_id INTEGER PRIMARY KEY,  -- AUTOINCREMENT
-  course_title_id TEXT NOT NULL,
+  course_title_id TEXT UNIQUE NOT NULL,
   course_title TEXT NOT NULL,
   units INTEGER NOT NULL,
-  teaching_point_val REAL,
   course_level TEXT
 );
 
@@ -54,6 +53,7 @@ CREATE TABLE scheduled_teaching (
   course_sec TEXT,
   enrollment INTEGER,
   offload_or_recall_flag INTEGER,
+  teaching_point_val REAL,
   PRIMARY KEY (user_id, year, quarter, course_title_id, course_sec),
   FOREIGN KEY (user_id) REFERENCES users (user_id),
   FOREIGN KEY (course_title_id) REFERENCES courses (course_title_id)

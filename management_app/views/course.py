@@ -10,6 +10,9 @@ from datetime import date
 from management_app.views.auth import login_required
 from management_app.db import get_db
 from management_app.views.utils import download_file, upload_file, remove_upload_file, get_upload_filepath
+from management_app.views.points import calculate_teaching_point_val
+
+
 
 courses = Blueprint('courses', __name__, url_prefix='/courses')
 
@@ -17,32 +20,35 @@ courses = Blueprint('courses', __name__, url_prefix='/courses')
 @login_required
 def offerings():
     if request.method == 'GET':
-        db = get_db()
-        
-        # generate year options
-        year_options = []        
+        db = get_db()        
+        year_options = []
+        courses = []       
         rows = db.execute(
-            'SELECT DISTINCT year FROM scheduled_teaching ORDER BY year DESC'
+            'SELECT DISTINCT year FROM scheduled_teaching ORDER BY year ASC'
         ).fetchall()
-        y_start = rows[0]['year']
-        y_end = y_start + 1
-        for row in rows:
-            year = row['year']
-            year_options.append(str(year) + '-' + str(year+1))
 
-        # todays_date = date.today()  # creating the date object of today's date        
-        # y_start, y_end = todays_date.year, todays_date.year + 1
-        year_selected = request.args.get('year')  # 2020-2021 (including: 2020 Fall - 2021 Winter & Spring)
-        if year_selected != None:
-            y_start = year_selected.split('-')[0]
-            y_end = year_selected.split('-')[1]
+        if rows != []:
+            y_start = rows[0]['year']
+            y_end = y_start + 1
+        
+            # generate year options
+            for row in rows:
+                year = row['year']
+                year_options.append(str(year) + '-' + str(year+1))
 
-        courses = db.execute(
-                'SELECT year, quarter, user_name, course_title_id, course_sec, enrollment'
-                ' FROM scheduled_teaching st JOIN courses ON st.course_id = courses.course_id JOIN users ON st.user_id = users.user_id'
+            # todays_date = date.today()  # creating the date object of today's date        
+            # y_start, y_end = todays_date.year, todays_date.year + 1
+            year_selected = request.args.get('year')  # 2020-2021 (including: 2020 Fall(1) - 2021 Winter(2) & Spring(3))
+            if year_selected != None:
+                y_start = year_selected.split('-')[0]
+                y_end = year_selected.split('-')[1]
+
+            courses = db.execute(
+                'SELECT year, quarter, user_name, st.course_title_id, course_sec, enrollment'
+                ' FROM scheduled_teaching st JOIN courses ON st.course_title_id = courses.course_title_id JOIN users ON st.user_id = users.user_id'
                 ' WHERE (year = ? AND quarter = 1) OR (year = ? AND quarter = 2) OR (year = ? AND quarter = 3)', (y_start, y_end, y_end)
-        ).fetchall()
-
+            ).fetchall()
+            
         return render_template('courses/offerings.html', courses=courses, year_options=year_options)
 
 
@@ -61,19 +67,14 @@ def catalog():
 
         #     course_title = row[1].strip()
         #     units = row[2]            
-        #     course_level = row[3].strip()
-        #     teaching_point_val = -1
+        #     course_level = row[3].strip()           
 
         #     db.execute(
-        #         'INSERT INTO courses (course_title_id, course_title, units, teaching_point_val, course_level)'
-        #         ' VALUES (?, ?, ?, ?, ?)',
-        #         (course_title_id, course_title, units, teaching_point_val, course_level)
+        #         'INSERT INTO courses (course_title_id, course_title, units, course_level)'
+        #         ' VALUES (?, ?, ?, ?)',
+        #         (course_title_id, course_title, units, course_level)
         #     )
-        #     db.commit()
-
-
-        # TODO: should give the default teaching_point_val = 1 for each course
-        
+        #     db.commit()        
 
 
         return render_template('courses/catalog.html')
@@ -113,14 +114,17 @@ def upload_user_file():
             course_title_id = row[3].strip().replace(' ', '')
             
             course_sec = row[4].strip()
-            # course_sec = 'A'
-            # TODO: if no num_of_enrollment -> show “-” or “?” in the frontend
             num_of_enrollment = row[5]
             offload_or_recall_flag = row[6]
+            if offload_or_recall_flag is None:
+                offload_or_recall_flag = 0
+            
             
             user_id = None
             # use "user_UCINetID" in s_t file to get user_id in users table
-            # take ucinetid: alfchen, emj to test
+            # insert these 2 rows into users table to test
+                # value: Alfred Chen, alfchen@uci.edu, alfchen
+                # value: Eric Mjolsness, emj@uci.edu, emj
             row = db.execute(
                 'SELECT user_id FROM users'
                 ' WHERE user_ucinetid = ?', (user_UCINetID,)
@@ -128,30 +132,39 @@ def upload_user_file():
             if row != None:
                 user_id = row[0]           
             
+            # TODO:
+            if num_of_enrollment is None:
+                teaching_point_val = 1  # default value is 1 for each course
+            else:
+                teaching_point_val = calculate_teaching_point_val(course_title_id, num_of_enrollment, offload_or_recall_flag, year, quarter)
 
-            # TODO: if not exist-> add; if exist-> update
+            # check existence
+            row = db.execute(
+                'SELECT * FROM scheduled_teaching '
+                ' WHERE user_id = ? AND year = ? AND quarter = ? AND course_title_id = ? AND course_sec = ?', 
+                (user_id, year, quarter, course_title_id, course_sec)
+            ).fetchone()
+            if row is None:
+                db.execute(
+                    'INSERT INTO scheduled_teaching (user_id, year, quarter, course_title_id, course_sec, enrollment, offload_or_recall_flag, teaching_point_val)'
+                    ' VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+                    (user_id, year, quarter, course_title_id, course_sec, num_of_enrollment, offload_or_recall_flag, teaching_point_val)
+                )
+            else:
+                db.execute(
+                    'UPDATE scheduled_teaching SET enrollment = ?, offload_or_recall_flag = ?, teaching_point_val = ?'
+                    ' WHERE user_id = ? AND year = ? AND quarter = ? AND course_title_id = ? AND course_sec = ?', 
+                    (num_of_enrollment, offload_or_recall_flag, teaching_point_val, user_id, year, quarter, course_title_id, course_sec)
+                )
+            db.commit()
 
 
-            db.execute(
-                'INSERT INTO scheduled_teaching (user_id, year, quarter, course_title_id, course_sec, enrollment, offload_or_recall_flag)'
-                ' VALUES (?, ?, ?, ?, ?, ?, ?)',
-                (user_id, year, quarter, course_title_id, course_sec, num_of_enrollment, offload_or_recall_flag)
-            )
-            db.commit()      
+        # TODO: call "adjust_co_taught_course_pt": before checking if it's a co-taught course, 
+        #   I need to insert all data in the scheduled_teaching beforhand  
+        #   (rule: Points are divided equally between the instructors for a co-taught course.)
+
+        # TODO: call calculate professor's point API (written by ying-ru)
         
         remove_upload_file(file)
-        
-        # TODO: if enrollment got updated -> update related courses' "teaching_point_val" column
-        # TODO: haven't calculate "teaching_point_val" column
-            # calculate teaching_point_val according to category (3 input) (write this function in the point.py and call it here)
-                # calculate rules: 
-                    # * category 0: 4+2 credit ? Ans: 6 units
-                    # * category 2: onload ?
-                        # note: "CS297P" -> this is P course
-                        #     if P course -> if offload_or_recall_flag is 0 then get 1 point; if offload_or_recall_flag is 1 then get 0 point
-                        #     if not P course -> give points according to category
-
-        # TODO: after upload enrollment -> call calculate teaching_point_val -> call calculate professor's point (ying-ru)  (write it in the point.py)
-        # TODO: call recaculation API (written by Ying-ru) (files may or may not contain numbers of enrollment)        
 
         return redirect(url_for('courses.offerings'))
