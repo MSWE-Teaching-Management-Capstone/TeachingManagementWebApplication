@@ -13,7 +13,7 @@
       <select class="form-select align-self-center" id="year" aria-label="Year Select" name="year">
         {% for option in year_options %}
         <option
-          value="{{ option }}" {% if request.args.get('year') == year or request.args.get('year') == None %} selected="selected"{% endif %}>
+          value="{{ option }}" {% if request.args.get('year') == option or request.args.get('year') == None %} selected="selected"{% endif %}>
           {{ option }}
         </option>
         {% endfor %}
@@ -42,7 +42,7 @@
 
 </div>
 
-<table class="table">
+<table class="table align-middle">
   <thead>
     <tr>
       <th scope="col">Name</th>
