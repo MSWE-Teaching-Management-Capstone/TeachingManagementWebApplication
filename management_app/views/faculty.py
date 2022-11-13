@@ -19,7 +19,7 @@ def index():
             faculties = []
         else:
             year_select = request.args.get('year') or year_options[len(year_options)-1]
-            year = year_select.split('-')[0]
+            year = int(year_select.split('-')[0])
             faculties = get_professor_point_info(year)
         return render_template('faculty/index.html', faculties=faculties, year_options=year_options)
 
@@ -150,13 +150,35 @@ def get_exist_user(user_ucinetid):
         'SELECT * FROM users WHERE user_ucinetid = ?', (user_ucinetid,)
     ).fetchone()
 
-def get_user_current_profile(user_id):
-    # TODO: need to update as yearly range user_role and active_status
+def get_user_yearly_status(user_id, year):
+    # Note: year comes from professor_point_info table, it represents the start of an an academic year
+    # e.g., year 2020 should be 2020-2021 (including 2020 Fall(1) - 2021 Winter(2) & Spring(3))
     db = get_db()
-    profile = db.execute(
-        'SELECT * FROM users_status WHERE user_id = ? AND end_year is NULL', (user_id,)
-    ).fetchone()
-    return profile['user_role']
+    rows = db.execute(
+        'SELECT * FROM users_status WHERE user_id = ? ORDER BY start_year ASC', (user_id,)
+    ).fetchall()
+
+    profile = {}
+    return_row = None
+    for row in rows:
+        start_year = row['start_year']
+        end_year = row['end_year']
+
+        # If end_year is Null, it's the latest result
+        # If end_year is no Null, continue to find result
+        if end_year is None and start_year <= year:
+            return_row = row
+        elif start_year <= year and end_year != year:
+            return_row = row
+        elif start_year <= year and end_year == year:
+            return_row = row
+
+    if return_row is not None:
+        profile['start_year'] = return_row['start_year']
+        profile['end_year'] = return_row['end_year']
+        profile['active_status'] = return_row['active_status']
+        profile['user_role'] = return_row['user_role']
+    return profile
 
 def get_professor_point_year_ranges():
     year_options = []
@@ -174,7 +196,7 @@ def get_yearly_previous_balance(user_id, year):
     db = get_db()
     row = db.execute(
         'SELECT ending_balance FROM professors_point_info WHERE user_id = ? AND year = ?',
-        (user_id, year-1)
+        (user_id, year-1,)
     ).fetchone()
     if row is None:
         return None
@@ -184,24 +206,25 @@ def get_professor_point_info(year):
     faculties = []
     db = get_db()
     data = db.execute(
-        'SELECT users.user_id, users.user_name, users.user_email,'
-        ' users_status.user_role, users_status.active_status,'
-        ' prof.year, prof.credit_due, prof.previous_balance, prof.ending_balance'
+        'SELECT users.user_id, users.user_name, users.user_email, prof.credit_due,prof.previous_balance, prof.ending_balance'
         ' FROM users'
-        ' JOIN users_status ON users.user_id = users_status.user_id'
         ' JOIN professors_point_info AS prof ON users.user_id = prof.user_id'
         ' WHERE prof.year = ?',
         (year,)
     ).fetchall()
 
     for row in data:
+        # get user yearly profile_status first
+        user_id = row['user_id']
+        profile_status = get_user_yearly_status(user_id, year)
+
         faculties.append({
             'name': row['user_name'],
             'email': row['user_email'],
-            'role': row['user_role'],
             'required_point': row['credit_due'],
             'prev_balance': row['previous_balance'],
-            'ending_balance': row['ending_balance']
+            'ending_balance': row['ending_balance'],
+            'profile_status': profile_status # { start_year, end_year, active_status, user_role }
         })
     return faculties
 
@@ -228,17 +251,26 @@ def insert_users_status(user_ucinetid, start_year, user_role, active_status):
     return
 
 def insert_professors_point_info(user_id, year, previous_balance, grad_count, grad_students):
-    user_role = get_user_current_profile(user_id)
-    credit_due = get_faculty_credit_due_by_role(user_role)
-    ending_balance = round(get_yearly_ending_balance(user_id, year, grad_count, grad_students, previous_balance, credit_due), 4)
+    # If user is not active, no need to insert new point record
+    # TODO: Confirm if the user is inactive, do we need to calculate the new ending_balance?
+    profile_status = get_user_yearly_status(user_id, year)
 
-    db = get_db()
-    db.execute(
-        'INSERT INTO professors_point_info (user_id, year, previous_balance, ending_balance, credit_due, grad_count, grad_students)'
-        ' VALUES (?, ?, ?, ?, ?, ?, ?)',
-        (user_id, year, previous_balance, ending_balance, credit_due, grad_count, grad_students)
-    )
-    db.commit()
+    if profile_status:
+        user_role = profile_status['user_role']
+        active_status = profile_status['active_status']
+
+        credit_due = get_faculty_credit_due_by_role(user_role)
+        ending_balance = 0
+        if active_status:
+            ending_balance = round(get_yearly_ending_balance(user_id, year, grad_count, grad_students, previous_balance, credit_due), 4)
+
+        db = get_db()
+        db.execute(
+            'INSERT INTO professors_point_info (user_id, year, previous_balance, ending_balance, credit_due, grad_count, grad_students)'
+            ' VALUES (?, ?, ?, ?, ?, ?, ?)',
+            (user_id, year, previous_balance, ending_balance, credit_due, grad_count, grad_students)
+        )
+        db.commit()
     return
 
 def update_users(user_name, is_admin, user_ucinetid):

@@ -115,7 +115,7 @@ def get_yearly_teaching_points(user_id, year):
     return yearly_teaching_points
 
 def get_yearly_grad_mentoring_points(grad_count, grad_students):
-    # Note: point per grad student and extra points are temporarily hard-coded
+    # TODO/Note: point per grad student and extra points are temporarily hard-coded
     grad_points = grad_count * 0.125
 
     total_grad_students = 0
@@ -140,6 +140,10 @@ def get_yearly_exception_points(user_id, year):
 
 # course teaching_point_value, grad_count, exception
 def get_yearly_ending_balance(user_id, year, grad_count, grad_students, previous_balance, credit_due):
+    # TODO: confirm previous_balance rule
+    # if previous_balance > 2:
+    #     previous_balance = 2
+
     teaching_points = get_yearly_teaching_points(user_id, year)
     grad_points = get_yearly_grad_mentoring_points(grad_count, grad_students)
     exception_points = get_yearly_exception_points(user_id, year)
