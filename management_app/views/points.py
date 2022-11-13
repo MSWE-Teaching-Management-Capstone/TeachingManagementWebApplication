@@ -31,7 +31,7 @@ def calculate_teaching_point_val(course_title_id, num_of_enrollment, offload_or_
             point_c3 = row['points']
         if row['rule_name'] == "Category 4":
             point_c4 = row['points']
-    
+
     row = db.execute(
         'SELECT units, course_level FROM courses '
         ' WHERE course_title_id = ?', (course_title_id,)
@@ -64,7 +64,7 @@ def calculate_teaching_point_val(course_title_id, num_of_enrollment, offload_or_
             y1 = year
             y2 = year+1
             y3 = year+1
-        if quarter == 2 or quarter == 3:               
+        if quarter == 2 or quarter == 3:
             y1 = year-1
             y2 = year
             y3 = year
@@ -74,4 +74,77 @@ def calculate_teaching_point_val(course_title_id, num_of_enrollment, offload_or_
         
         if num_of_row[0] < 2:
             return point_c4
-        return 0
+    return 0
+
+def get_faculty_credit_due_by_role(user_role):
+    required_point = None
+    if user_role == 'tenured research faculty':
+        required_point = 3.5
+    elif user_role == 'assistant professor (1st year)':
+        required_point = 1
+    elif user_role == 'assistant professor (2nd+ year)':
+        required_point = 2.5
+    elif user_role == 'tenured POT':
+        required_point = 6.5
+    elif user_role == 'assistant POT (1st year)':
+        required_point = 5
+    elif user_role == 'assistant POT (2nd+ year)':
+        required_point = 5.5
+    elif user_role == 'staff':
+        required_point = 0
+    return required_point
+
+def get_yearly_teaching_points(user_id, year):
+    # Note: year comes from professor_point_info table, it represents the start of an an academic year
+    # This year should convert to the range of academic year
+    # e.g., year 2020 should be 2020-2021 (including 2020 Fall(1) - 2021 Winter(2) & Spring(3))
+    year_range_start = year
+    year_range_end = year + 1
+    yearly_teaching_points = 0
+    db = get_db()
+    rows = db.execute(
+        'SELECT st.teaching_point_val'
+        ' FROM scheduled_teaching AS st'
+        ' JOIN users ON users.user_id = st.user_id'
+        ' WHERE st.user_id = ? AND ((st.year = ? AND st.quarter = 1) OR (st.year = ? AND st.quarter = 2) OR (st.year = ? AND st.quarter = 3))',
+        (user_id, year_range_start, year_range_end, year_range_end)
+    ).fetchall()
+
+    for row in rows:
+        yearly_teaching_points += row['teaching_point_val']
+    return yearly_teaching_points
+
+def get_yearly_grad_mentoring_points(grad_count, grad_students):
+    # TODO/Note: point per grad student and extra points are temporarily hard-coded
+    grad_points = grad_count * 0.125
+
+    total_grad_students = 0
+    if len(grad_students) > 0:
+        total_grad_students = len(grad_students.split(','))
+
+    if grad_points >= 0.5:
+        grad_points = 0.5 # max = 0.5 for grad_count credits
+    if total_grad_students >= 6:
+        grad_points += 0.5
+    return grad_points
+
+def get_yearly_exception_points(user_id, year):
+    exception_points = 0
+    db = get_db()
+    rows = db.execute(
+        'SELECT points FROM exceptions WHERE user_id = ? AND year = ?', (user_id, year)
+    )
+    for row in rows:
+        exception_points += row['points']
+    return exception_points
+
+# course teaching_point_value, grad_count, exception
+def get_yearly_ending_balance(user_id, year, grad_count, grad_students, previous_balance, credit_due):
+    # TODO: confirm previous_balance rule
+    # if previous_balance > 2:
+    #     previous_balance = 2
+
+    teaching_points = get_yearly_teaching_points(user_id, year)
+    grad_points = get_yearly_grad_mentoring_points(grad_count, grad_students)
+    exception_points = get_yearly_exception_points(user_id, year)
+    return previous_balance + teaching_points + grad_points + exception_points - credit_due

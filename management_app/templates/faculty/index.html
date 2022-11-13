@@ -13,7 +13,7 @@
       <select class="form-select align-self-center" id="year" aria-label="Year Select" name="year">
         {% for option in year_options %}
         <option
-          value="{{ option }}" {% if request.args.get('year') == year or request.args.get('year') == None %} selected="selected"{% endif %}>
+          value="{{ option }}" {% if request.args.get('year') == option or request.args.get('year') == None %} selected="selected"{% endif %}>
           {{ option }}
         </option>
         {% endfor %}
@@ -42,7 +42,7 @@
 
 </div>
 
-<table class="table">
+<table class="table align-middle table-hover">
   <thead>
     <tr>
       <th scope="col">Name</th>
@@ -56,10 +56,18 @@
   </thead>
   <tbody>
     {% for faculty in faculties %}
-      <tr>
-        <th scope="row">{{ faculty['name'] }}</th>
+      <tr class="{% if faculty['profile_status'] and faculty['profile_status']['active_status'] == 0 %}table-secondary{% endif %}">
+        <th scope="row">
+          <a href="#">{{ faculty['name'] }}</a>
+        </th>
         <td>{{ faculty['email'] }}</td>
-        <td>{{ faculty['role'] }}</td>
+        <td>
+          {% if faculty['profile_status'] %}
+            {{ faculty['profile_status']['user_role'] }}
+          {% else %}
+            -
+          {% endif %}
+        </td>
         <td>{{ faculty['required_point'] }}</td>
         <td>{{ faculty['prev_balance'] }}</td>
         <td>{{ faculty['ending_balance'] }}</td>
