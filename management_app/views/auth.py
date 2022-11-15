@@ -3,7 +3,8 @@ import pathlib
 import functools
 
 import requests
-from flask import Flask, session, redirect, request, render_template, Blueprint, url_for
+from flask import flash, session, redirect, request, render_template, Blueprint, url_for
+from management_app.views.utils import get_exist_user, check_admin
 from google.oauth2 import id_token
 from google_auth_oauthlib.flow import Flow
 from pip._vendor import cachecontrol
@@ -38,7 +39,7 @@ def login_required(view):
 
 @auth.route("/")
 def index():
-    return render_template("login.html", has_alert=request.args.get("has_alert", False))
+    return render_template("login.html")
 
 
 @auth.route("/login")
@@ -75,17 +76,29 @@ def login_callback():
     session["google_id"] = id_info.get("sub")
     session["name"] = id_info.get("name")
     session["domain"] = id_info.get("hd", "-1")
+    session['net_id'] = id_info.get('email').split(sep='@')[0]
 
     # verify the domain of email comes from UCI
     if session["domain"] != os.getenv("DOMAIN", ""):
         session.clear()
-        return redirect(url_for('auth.index', has_alert=True))
+        flash("Alert: You have to log in with your UCI email (e.g. abc123@uci.edu)")
+        return redirect(url_for('auth.index'))
 
+    # verify if the user has the permission to access the system
+    if not get_exist_user(session['net_id']):
+        session.clear()
+        flash("Alert: You do not have the permission to access the system.")
+        return redirect(url_for('auth.index'))
+
+    session['is_admin'] = check_admin(session['net_id'])
     return redirect(url_for('auth.redirect_to_homepage'))
 
 
 @auth.route("/redirect_to_homepage")
 @login_required
 def redirect_to_homepage():
-    # We currently use faculty page as home page after user logging in
-    return redirect('/faculty')
+    # We currently use faculty page as home page for admins after signing in
+    if session['is_admin']:
+        return redirect('/faculty')
+    else:
+        return redirect('/faculty')  # TODO: Redirect to regular user homepage

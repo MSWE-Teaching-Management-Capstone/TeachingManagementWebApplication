@@ -9,11 +9,19 @@
 
     <title>UCI Teaching Management APP</title>
 </head>
-<body>
-{% if has_alert %}
-<script>alert("You have to log in with your UCI email (e.g. abc123@uci.edu)")</script>
-{% endif %}
 
+{% with messages = get_flashed_messages() %}
+    {% if messages %}
+        <ul class=flashes>
+            {% for message in messages %}
+                <div class="alert alert-danger" role="alert">{{ message }}</div>
+            {% endfor %}
+        </ul>
+    {% endif %}
+{% endwith %}
+
+
+<body>
 <div class="container">
     <h2>UCI ICS Department</h2>
     <h4>Teaching Management System</h4>
