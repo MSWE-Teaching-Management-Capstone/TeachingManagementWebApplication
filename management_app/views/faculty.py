@@ -42,9 +42,9 @@ def upload():
         upload_file(file)
 
         if action_type == 'addUsers':
-            process_user_file(file_path, 1, 'Users', action_type)
+            process_user_file(file_path, 1, 'Users')
         elif action_type == 'addProfessors':
-            process_professors_point_file(file_path, 1, 'Professors_point_info', action_type)
+            process_professors_point_file(file_path, 1, 'Professors_point_info')
 
         remove_upload_file(file)
         return redirect(url_for('faculty.index'))
@@ -88,7 +88,7 @@ def create():
             return redirect(url_for('faculty.index'))
     return render_template('faculty/create.html', role_options=role_options)
 
-def process_user_file(file_path, sheet__index, sheet__index_name, action_type):
+def process_user_file(file_path, sheet__index, sheet__index_name):
     error = None
     try:
         df = pd.read_excel(file_path, sheet_name=sheet__index or sheet__index_name)
@@ -115,7 +115,7 @@ def process_user_file(file_path, sheet__index, sheet__index_name, action_type):
                 db = get_db()
                 row = get_exist_user(user_ucinetid) # Check exist user by ucinetid
 
-                if row is None and action_type == 'addUsers':
+                if row is None:
                     try:
                         insert_users(user_name, user_email, user_ucinetid, is_admin)
                         insert_users_status(user_ucinetid, start_year, user_role, is_active)
@@ -134,7 +134,7 @@ def process_user_file(file_path, sheet__index, sheet__index_name, action_type):
     flash('Upload users data succesfully!', 'success')
     return
 
-def process_professors_point_file(file_path, sheet__index, sheet__index_name, action_type):
+def process_professors_point_file(file_path, sheet__index, sheet__index_name):
     error = None
     try:
         df = pd.read_excel(file_path, sheet_name=sheet__index or sheet__index_name)
@@ -161,15 +161,21 @@ def process_professors_point_file(file_path, sheet__index, sheet__index_name, ac
                 error = 'User is not existed in the system'
             else:
                 user_id = user['user_id']
+                profile_status = get_user_yearly_status(user_id, year)
 
-                # TODO: Need to remove this later and use the last year
-                previous_balance = get_yearly_previous_balance(user_id, year)
-                if previous_balance is None:
-                    previous_balance = row[5]
+                # If user is not active, display ending_balance with 0 for front-end
+                # Only when user is active, insert new ending_balance point record
+                if profile_status and profile_status['active_status'] != 1:
+                    error = 'Failed to upload the inactive faculty point data. If you would like to assign point to inactive faculty, please activate the faculty through UI first.'
+                else:
+                    user_role = profile_status['user_role']
+                    # TODO: Need to remove this later and use the last year
+                    previous_balance = get_yearly_previous_balance(user_id, year)
+                    if previous_balance is None:
+                        previous_balance = row[5]
 
-                if action_type == 'addProfessors':
                     try:
-                        insert_professors_point_info(user_id, year, previous_balance, grad_count, grad_students)
+                        insert_professors_point_info(user_id, year, previous_balance, grad_count, grad_students, user_role)
                     except db.IntegrityError:
                         print('INTEGRITY ERROR\n', traceback.print_exc())
                         error = 'Database insert error. Please refresh and upload correct file with data of a new academic year.'
@@ -179,7 +185,7 @@ def process_professors_point_file(file_path, sheet__index, sheet__index_name, ac
     if error is not None:
         flash(error, 'error')
         return
-    
+
     flash('Upload professors point info data succesfully!', 'success')
     return
 
@@ -289,27 +295,17 @@ def insert_users_status(user_ucinetid, start_year, user_role, active_status):
     db.commit()
     return
 
-def insert_professors_point_info(user_id, year, previous_balance, grad_count, grad_students):
-    # If user is not active, no need to insert new point record
-    # TODO: Confirm if the user is inactive, do we need to calculate the new ending_balance?
-    profile_status = get_user_yearly_status(user_id, year)
+def insert_professors_point_info(user_id, year, previous_balance, grad_count, grad_students, user_role):
+    credit_due = get_faculty_credit_due_by_role(user_role)
+    ending_balance = round(get_yearly_ending_balance(user_id, year, grad_count, grad_students, previous_balance, credit_due), 4)
 
-    if profile_status:
-        user_role = profile_status['user_role']
-        active_status = profile_status['active_status']
-
-        credit_due = get_faculty_credit_due_by_role(user_role)
-        ending_balance = 0
-        if active_status:
-            ending_balance = round(get_yearly_ending_balance(user_id, year, grad_count, grad_students, previous_balance, credit_due), 4)
-
-        db = get_db()
-        db.execute(
-            'INSERT INTO professors_point_info (user_id, year, previous_balance, ending_balance, credit_due, grad_count, grad_students)'
-            ' VALUES (?, ?, ?, ?, ?, ?, ?)',
-            (user_id, year, previous_balance, ending_balance, credit_due, grad_count, grad_students)
-        )
-        db.commit()
+    db = get_db()
+    db.execute(
+        'INSERT INTO professors_point_info (user_id, year, previous_balance, ending_balance, credit_due, grad_count, grad_students)'
+        ' VALUES (?, ?, ?, ?, ?, ?, ?)',
+        (user_id, year, previous_balance, ending_balance, credit_due, grad_count, grad_students)
+    )
+    db.commit()
     return
 
 def update_users(user_name, is_admin, user_ucinetid):

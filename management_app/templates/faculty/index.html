@@ -72,7 +72,11 @@
         </td>
         <td>{{ faculty['required_point'] }}</td>
         <td>{{ faculty['prev_balance'] }}</td>
+        {% if faculty['profile_status'] and faculty['profile_status']['active_status'] == 0 %}
+        <td>0</td>
+        {% else %}
         <td>{{ faculty['ending_balance'] }}</td>
+        {% endif %}
         <td>
           <div class="dropdown">
             <button class="btn btn-secondary fw-bold" type="button" data-bs-toggle="dropdown" aria-expanded="false">
