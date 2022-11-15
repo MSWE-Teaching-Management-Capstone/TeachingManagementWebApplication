@@ -77,7 +77,7 @@ def calculate_teaching_point_val(course_title_id, num_of_enrollment, offload_or_
     return 0
 
 def get_faculty_credit_due_by_role(user_role):
-    required_point = None
+    required_point = 0
     if user_role == 'tenured research faculty':
         required_point = 3.5
     elif user_role == 'assistant professor (1st year)':
@@ -138,7 +138,6 @@ def get_yearly_exception_points(user_id, year):
         exception_points += row['points']
     return exception_points
 
-# course teaching_point_value, grad_count, exception
 def get_yearly_ending_balance(user_id, year, grad_count, grad_students, previous_balance, credit_due):
     # TODO: confirm previous_balance rule
     # if previous_balance > 2:
@@ -148,3 +147,8 @@ def get_yearly_ending_balance(user_id, year, grad_count, grad_students, previous
     grad_points = get_yearly_grad_mentoring_points(grad_count, grad_students)
     exception_points = get_yearly_exception_points(user_id, year)
     return previous_balance + teaching_points + grad_points + exception_points - credit_due
+
+def update_yearly_ending_balance():
+    # TODO: this function will be re-called in course.py after enrollment get updated after week 2
+    # TODO: If past enrollment changes -> update previous balance & ending balance recursively
+    return
