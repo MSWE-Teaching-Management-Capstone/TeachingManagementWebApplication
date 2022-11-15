@@ -6,20 +6,20 @@
 {% block content %}
 <form method="POST" action="#" enctype="multipart/form-data" class="col-lg-6 col-sm-12">
   <div class="mb-3">
-    <label for="name">Name</label>
+    <label for="name">*Name</label>
     <input name="name" type="text" class="form-control" id="name" placeholder="Anteater Smit" value="{{ request.form['name'] }}" required>
   </div>
   <div class="mb-3">
-    <label for="user_ucinetid">UCI NetID</label>
+    <label for="user_ucinetid">*UCI NetID</label>
     <input name="user_ucinetid" type="text" class="form-control" id="user_ucinetid" placeholder="anteater1" value="{{ request.form['user_ucinetid'] }}" required>
   </div>
   <div class="mb-3">
-    <label for="email">Email address</label>
+    <label for="email">*Email address</label>
     <input name="email" type="email" class="form-control" id="email" placeholder="anteater1@uci.edu" value="{{ request.form['email'] }}" required>
   </div>
   <div>
     <div class="mb-3 d-flex">
-      <label class="align-self-center" for="user_role" style="width: 160px;">Faculty Role:&nbsp;</label>
+      <label class="align-self-center" for="user_role" style="width: 160px;">*Faculty Role:&nbsp;</label>
       <select class="form-select align-self-center" id="user_role" aria-label="Faculty Role" name="user_role" required onchange="handleRoleSelection()">
         <option value="">None</option>
         {% for option in role_options %}
@@ -33,7 +33,7 @@
     </ul>
   </div>
   <div class="mb-3">
-    <label for="grad_count">Graduate Student Count</label>
+    <label for="grad_count">*Graduate Students Count</label>
     <input name="grad_count" type="text" class="form-control" id="grad_count" placeholder="3.33" value="{{ request.form['grad_count'] }}" required>
     <p id="gradStudentsHelp" class="form-text text-muted"> If no grad count, please fill 0.</p>
   </div>
