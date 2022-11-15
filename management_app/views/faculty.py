@@ -307,32 +307,3 @@ def insert_professors_point_info(user_id, year, previous_balance, grad_count, gr
     )
     db.commit()
     return
-
-def update_users(user_name, is_admin, user_ucinetid):
-    db = get_db()
-    db.execute(
-        'UPDATE users SET user_name = ?, admin = ?'
-        ' WHERE user_ucinetid = ?',
-        (user_name, is_admin, user_ucinetid)
-    )
-    db.commit()
-    return
-
-def update_user_status_by_users_template(user_id, year, user_role):
-    db = get_db()
-    db.execute(
-        'UPDATE users_status SET year = ?, user_role = ?'
-        ' WHERE user_id = ?',
-        (year, user_role, user_id)
-    )
-    db.commit()
-    return
-
-def update_professors_point_info(user_id, year, previous_balance, grad_count, grad_students):
-    db = get_db()
-    db.execute(
-        'UPDATE professors_point_info SET year = ?, previous_balance = ?, grad_count = ?, grad_students = ?'
-        ' WHERE user_id = ?',
-        (year, previous_balance, grad_count, grad_students, user_id)
-    )
-    return

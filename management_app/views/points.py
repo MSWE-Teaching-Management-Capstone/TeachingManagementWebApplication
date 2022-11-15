@@ -139,16 +139,64 @@ def get_yearly_exception_points(user_id, year):
     return exception_points
 
 def get_yearly_ending_balance(user_id, year, grad_count, grad_students, previous_balance, credit_due):
-    # TODO: confirm previous_balance rule
-    # if previous_balance > 2:
-    #     previous_balance = 2
-
     teaching_points = get_yearly_teaching_points(user_id, year)
     grad_points = get_yearly_grad_mentoring_points(grad_count, grad_students)
     exception_points = get_yearly_exception_points(user_id, year)
     return previous_balance + teaching_points + grad_points + exception_points - credit_due
 
-def update_yearly_ending_balance():
-    # TODO: this function will be re-called in course.py after enrollment get updated after week 2
-    # TODO: If past enrollment changes -> update previous balance & ending balance recursively
+def update_yearly_ending_balance(user_id, year, is_recursive):
+    # Note: year represents the start of an an academic year
+    # e.g., year 2020 should be 2020-2021 (including 2020 Fall(1) - 2021 Winter(2) & Spring(3))
+    if is_recursive is not True:
+        # If no need to recursively update, only current academic year enrollment get updated after week 2
+        db = get_db()
+        row = db.execute(
+            'SELECT * FROM professors_point_info'
+            ' WHERE user_id = ? AND year = ?',
+            (user_id, y)
+        ).fetchone()
+
+        if row is not None:
+            grad_count = row['grad_count']
+            grad_students = row['grad_students']
+            previous_balance = row['previous_balance']
+            ending_balance = get_yearly_ending_balance(user_id, year, grad_count, grad_students, previous_balance, credit_due)
+
+            db.execute(
+                'UPDATE professors_point_info SET ending_balance = ?'
+                ' WHERE user_id = ? AND year = ?',
+                (ending_balance, user_id, year)
+            )
+            db.commit()
+    else:
+        # If past enrollment changes, update previous balance & ending balance recursively until the latest academic year
+        db = get_db()
+        latest_year = db.execute('SELECT DISTINCT year FROM professors_point_info ORDER BY year DESC').fetchone()['year']
+
+        for y in range(year, latest_year+1):
+            row = db.execute(
+                'SELECT * FROM professors_point_info'
+                ' WHERE user_id = ? AND year = ?',
+                (user_id, y)
+            ).fetchone()
+
+            if row is not None:
+                grad_count = row['grad_count']
+                grad_students = row['grad_students']
+                previous_balance = row['previous_balance']
+                ending_balance = row['ending_balance']
+                credit_due = row['credit_due']
+                if y == year:
+                    ending_balance = get_yearly_ending_balance(user_id, y, grad_count, grad_students, previous_balance, credit_due)
+                else:
+                    previous_balance = ending_balance
+                    ending_balance = get_yearly_ending_balance(user_id, y, grad_count, grad_students, previous_balance, credit_due)
+
+                db = get_db()
+                db.execute(
+                    'UPDATE professors_point_info SET previous_balance = ?, ending_balance = ?'
+                    ' WHERE user_id = ? AND year = ?',
+                    (previous_balance, ending_balance, user_id, y)
+                )
+                db.commit()
     return
