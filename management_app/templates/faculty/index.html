@@ -5,7 +5,9 @@
 
 {% block content %}
 <div class="row">
-  <div>
+  <div class="mb-3">
+    <!-- TODO: Retrive log upload file action and display timestamp here -->
+    Last upload time: MM/DD/YYYY time
   </div>
   <div class="col-3">
     <form class="d-flex">
@@ -33,7 +35,7 @@
             ⋮
           </button>
           <ul class="dropdown-menu">
-            <li><a class="dropdown-item" href="#"><i class="fa-solid fa-plus"></i> Add Faculty Member</a></li>
+            <li><a class="dropdown-item" href="{{ url_for('faculty.create') }}"><i class="fa-solid fa-plus"></i> Add Faculty Member</a></li>
           </ul>
         </div>
       </div>

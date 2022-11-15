@@ -49,6 +49,45 @@ def upload():
         remove_upload_file(file)
         return redirect(url_for('faculty.index'))
 
+@faculty.route('/create', methods=['GET', 'POST'])
+@login_required
+def create():
+    role_options = [
+        'tenured research faculty',
+        'assistant professor (1st year)',
+        'assistant professor (2nd+ year)',
+        'tenured POT',
+        'assistant POT (1st year)',
+        'assistant POT (2nd+ year)'
+    ]
+
+    if request.method == 'POST':
+        error = None
+        name = request.form['name']
+        user_ucinetid = request.form['user_ucinetid']
+        email = request.form['email']
+        user_role = request.form['user_role']
+        grad_count = request.form['grad_count']
+        grad_students = request.form['grad_students']
+
+        if not name:
+            error = 'Name is required. '
+        if not user_ucinetid:
+            error += 'UCI NetID is required. '
+        if not email:
+            error += 'Email is required. '
+        if not user_role:
+            error += 'User Role is required. '
+        if not grad_count:
+            error += 'Grad Count is required. If no grad count, please fill 0. '
+
+        if error is not None:
+            flash(error, 'error')
+        else:
+            #TODO: need to insert new record in database
+            return redirect(url_for('faculty.index'))
+    return render_template('faculty/create.html', role_options=role_options)
+
 def process_user_file(file_path, sheet__index, sheet__index_name, action_type):
     error = None
     try:

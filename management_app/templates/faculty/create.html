@@ -1,0 +1,68 @@
+{% extends 'base.html' %}
+
+{% block title %}Add Faculty Member{% endblock %}
+{% block header %}Add Faculty Member{% endblock %}
+
+{% block content %}
+<form method="POST" action="#" enctype="multipart/form-data" class="col-lg-6 col-sm-12">
+  <div class="mb-3">
+    <label for="name">Name</label>
+    <input name="name" type="text" class="form-control" id="name" placeholder="Anteater Smit" value="{{ request.form['name'] }}" required>
+  </div>
+  <div class="mb-3">
+    <label for="user_ucinetid">UCI NetID</label>
+    <input name="user_ucinetid" type="text" class="form-control" id="user_ucinetid" placeholder="anteater1" value="{{ request.form['user_ucinetid'] }}" required>
+  </div>
+  <div class="mb-3">
+    <label for="email">Email address</label>
+    <input name="email" type="email" class="form-control" id="email" placeholder="anteater1@uci.edu" value="{{ request.form['email'] }}" required>
+  </div>
+  <div>
+    <div class="mb-3 d-flex">
+      <label class="align-self-center" for="user_role" style="width: 160px;">Faculty Role:&nbsp;</label>
+      <select class="form-select align-self-center" id="user_role" aria-label="Faculty Role" name="user_role" required onchange="handleRoleSelection()">
+        <option value="">None</option>
+        {% for option in role_options %}
+        <option value="{{ option }}">{{ option }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <ul>
+      <li>Initial Balance: 0</li>
+      <li>Required Credit Due: <span id="user_role_credit_due"></span></li>
+    </ul>
+  </div>
+  <div class="mb-3">
+    <label for="grad_count">Graduate Student Count</label>
+    <input name="grad_count" type="text" class="form-control" id="grad_count" placeholder="3.33" value="{{ request.form['grad_count'] }}" required>
+    <p id="gradStudentsHelp" class="form-text text-muted"> If no grad count, please fill 0.</p>
+  </div>
+  <div class="mb-3">
+    <label for="grad_students">Graduate Students Name</label>
+    <input name="grad_students" type="text" class="form-control" id="grad_students" placeholder="Talyor Smith, John Wayne" aria-describedby="gradStudentsHelp" value="{{ request.form['grad_students'] }}">
+    <p id="gradStudentsHelp" class="form-text text-muted">Please use comma to separate students name</p>
+  </div>
+
+  <button type="button" class="btn btn-secondary">
+    <a href="{{ url_for('faculty.index') }}" style="text-decoration: none; color: white;">Cancel</a>
+  </button>
+  <button type="submit" class="btn btn-primary" id="addFacultyMember">Save</button>
+</form>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    function handleRoleSelection() {
+        const roles = {
+            'tenured research faculty': 3.5,
+            'assistant professor (1st year)': 1,
+            'assistant professor (2nd+ year)': 2.5,
+            'tenured POT': 6.5,
+            'assistant POT (1st year)': 5,
+            'assistant POT (2nd+ year)': 5.5
+        };
+        const role_selections = document.getElementById('user_role').value;
+        document.getElementById('user_role_credit_due').innerHTML = roles[role_selections];
+    }
+</script>
+{% endblock scripts %}
