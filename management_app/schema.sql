@@ -85,3 +85,22 @@ CREATE TABLE logs (
   FOREIGN KEY (user_id) REFERENCES users (user_id),
   FOREIGN KEY (exception_id) REFERENCES exceptions (exception_id)
 );
+
+-- Create initial rules and constant point values
+INSERT INTO rules
+  (rule_name, value)
+VALUES
+  ('Role-Tenured research faculty', 3.5),
+  ('Role-Faculty up for tenure', 3.5),
+  ('Role-Assistant professor (1st year)', 1),
+  ('Role-Assistant professor (2nd+ year)', 2.5),
+  ('Role-Tenured POT', 6.5),
+  ('Role-PoT up for tenure', 6.5),
+  ('Role-Assistant POT (1st year)', 5),
+  ('Role-Assistant POT (2nd+ year)', 5.5),
+  ('Role-Staff', 0),
+  ('Category 0', 1.5),
+  ('Category 1', 1.25),
+  ('Category 2', 1),
+  ('Category 3', 0.75),
+  ('Category 4', 0.25)
