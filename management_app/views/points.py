@@ -76,26 +76,28 @@ def calculate_teaching_point_val(course_title_id, num_of_enrollment, offload_or_
             return point_c4
     return 0
 
-def get_faculty_credit_due_by_role(user_role):
+def get_faculty_credit_due_by_role(role):
+    # TODO: Faculty Up for Tenure: 3.5 points, PoT up for tenure: 6.5
+    # TODO: make it dynamic
     required_point = 0
-    if user_role == 'tenured research faculty':
+    if role == 'tenured research faculty':
         required_point = 3.5
-    elif user_role == 'assistant professor (1st year)':
+    elif role == 'assistant professor (1st year)':
         required_point = 1
-    elif user_role == 'assistant professor (2nd+ year)':
+    elif role == 'assistant professor (2nd+ year)':
         required_point = 2.5
-    elif user_role == 'tenured POT':
+    elif role == 'tenured POT':
         required_point = 6.5
-    elif user_role == 'assistant POT (1st year)':
+    elif role == 'assistant POT (1st year)':
         required_point = 5
-    elif user_role == 'assistant POT (2nd+ year)':
+    elif role == 'assistant POT (2nd+ year)':
         required_point = 5.5
-    elif user_role == 'staff':
+    elif role == 'staff':
         required_point = 0
     return required_point
 
 def get_yearly_teaching_points(user_id, year):
-    # Note: year comes from professor_point_info table, it represents the start of an an academic year
+    # Note: year comes from faculty_point_info table, it represents the start of an an academic year
     # This year should convert to the range of academic year
     # e.g., year 2020 should be 2020-2021 (including 2020 Fall(1) - 2021 Winter(2) & Spring(3))
     year_range_start = year
@@ -151,7 +153,7 @@ def update_yearly_ending_balance(user_id, year, is_recursive):
         # If no need to recursively update, only current academic year enrollment get updated after week 2
         db = get_db()
         row = db.execute(
-            'SELECT * FROM professors_point_info'
+            'SELECT * FROM faculty_point_info'
             ' WHERE user_id = ? AND year = ?',
             (user_id, y)
         ).fetchone()
@@ -163,7 +165,7 @@ def update_yearly_ending_balance(user_id, year, is_recursive):
             ending_balance = get_yearly_ending_balance(user_id, year, grad_count, grad_students, previous_balance, credit_due)
 
             db.execute(
-                'UPDATE professors_point_info SET ending_balance = ?'
+                'UPDATE faculty_point_info SET ending_balance = ?'
                 ' WHERE user_id = ? AND year = ?',
                 (ending_balance, user_id, year)
             )
@@ -171,11 +173,11 @@ def update_yearly_ending_balance(user_id, year, is_recursive):
     else:
         # If past enrollment changes, update previous balance & ending balance recursively until the latest academic year
         db = get_db()
-        latest_year = db.execute('SELECT DISTINCT year FROM professors_point_info ORDER BY year DESC').fetchone()['year']
+        latest_year = db.execute('SELECT DISTINCT year FROM faculty_point_info ORDER BY year DESC').fetchone()['year']
 
         for y in range(year, latest_year+1):
             row = db.execute(
-                'SELECT * FROM professors_point_info'
+                'SELECT * FROM faculty_point_info'
                 ' WHERE user_id = ? AND year = ?',
                 (user_id, y)
             ).fetchone()
@@ -194,7 +196,7 @@ def update_yearly_ending_balance(user_id, year, is_recursive):
 
                 db = get_db()
                 db.execute(
-                    'UPDATE professors_point_info SET previous_balance = ?, ending_balance = ?'
+                    'UPDATE faculty_point_info SET previous_balance = ?, ending_balance = ?'
                     ' WHERE user_id = ? AND year = ?',
                     (previous_balance, ending_balance, user_id, y)
                 )

@@ -52,6 +52,7 @@ def upload():
 @faculty.route('/create', methods=['GET', 'POST'])
 @login_required
 def create():
+    # TODO: get role from database
     role_options = [
         'tenured research faculty',
         'assistant professor (1st year)',
@@ -66,7 +67,7 @@ def create():
         name = request.form['name']
         user_ucinetid = request.form['user_ucinetid']
         email = request.form['email']
-        user_role = request.form['user_role']
+        role = request.form['role']
         grad_count = request.form['grad_count']
         grad_students = request.form['grad_students']
 
@@ -76,7 +77,7 @@ def create():
             error += 'UCI NetID is required. '
         if not email:
             error += 'Email is required. '
-        if not user_role:
+        if not role:
             error += 'User Role is required. '
         if not grad_count:
             error += 'Grad Count is required. If no grad count, please fill 0. '
@@ -108,7 +109,7 @@ def process_user_file(file_path, sheet__index, sheet__index_name):
                 user_name = row[1]
                 user_email = row[2]
                 user_ucinetid = row[3]
-                user_role = row[4]
+                role = row[4]
                 is_active = row[5]
                 is_admin = row[6]
 
@@ -117,8 +118,10 @@ def process_user_file(file_path, sheet__index, sheet__index_name):
 
                 if row is None:
                     try:
+                        # If role is staff, just keep admin flag in users table and no need to know staff's active role range
                         insert_users(user_name, user_email, user_ucinetid, is_admin)
-                        insert_users_status(user_ucinetid, start_year, user_role, is_active)
+                        if role != 'staff':
+                            insert_faculty_status(user_ucinetid, start_year, role, is_active)
                     except db.IntegrityError:
                         error = 'Database insert error. Please refresh and upload correct file with new user data.'
                         print('INTEGRITY ERROR\n', traceback.print_exc())
@@ -168,14 +171,14 @@ def process_professors_point_file(file_path, sheet__index, sheet__index_name):
                 if profile_status and profile_status['active_status'] != 1:
                     error = 'Failed to upload the inactive faculty point data. If you would like to assign point to inactive faculty, please activate the faculty through UI first.'
                 else:
-                    user_role = profile_status['user_role']
+                    role = profile_status['role']
                     # TODO: Need to remove this later and use the last year
                     previous_balance = get_yearly_previous_balance(user_id, year)
                     if previous_balance is None:
                         previous_balance = row[5]
 
                     try:
-                        insert_professors_point_info(user_id, year, previous_balance, grad_count, grad_students, user_role)
+                        insert_faculty_point_info(user_id, year, previous_balance, grad_count, grad_students, role)
                     except db.IntegrityError:
                         print('INTEGRITY ERROR\n', traceback.print_exc())
                         error = 'Database insert error. Please refresh and upload correct file with data of a new academic year.'
@@ -200,7 +203,7 @@ def get_user_yearly_status(user_id, year):
     # e.g., year 2020 should be 2020-2021 (including 2020 Fall(1) - 2021 Winter(2) & Spring(3))
     db = get_db()
     rows = db.execute(
-        'SELECT * FROM users_status WHERE user_id = ? ORDER BY start_year ASC', (user_id,)
+        'SELECT * FROM faculty_status WHERE user_id = ? ORDER BY start_year ASC', (user_id,)
     ).fetchall()
 
     profile = {}
@@ -222,14 +225,14 @@ def get_user_yearly_status(user_id, year):
         profile['start_year'] = return_row['start_year']
         profile['end_year'] = return_row['end_year']
         profile['active_status'] = return_row['active_status']
-        profile['user_role'] = return_row['user_role']
+        profile['role'] = return_row['role']
     return profile
 
 def get_professor_point_year_ranges():
     year_options = []
     db = get_db()
     rows = db.execute(
-        'SELECT DISTINCT year FROM professors_point_info'
+        'SELECT DISTINCT year FROM faculty_point_info'
     ).fetchall()
     for row in rows:
         year = row['year']
@@ -240,7 +243,7 @@ def get_professor_point_year_ranges():
 def get_yearly_previous_balance(user_id, year):
     db = get_db()
     row = db.execute(
-        'SELECT ending_balance FROM professors_point_info WHERE user_id = ? AND year = ?',
+        'SELECT ending_balance FROM faculty_point_info WHERE user_id = ? AND year = ?',
         (user_id, year-1,)
     ).fetchone()
     if row is None:
@@ -251,10 +254,10 @@ def get_professor_point_info(year):
     faculties = []
     db = get_db()
     data = db.execute(
-        'SELECT users.user_id, users.user_name, users.user_email, prof.credit_due,prof.previous_balance, prof.ending_balance'
+        'SELECT users.user_id, users.user_name, users.user_email, faculty.credit_due,faculty.previous_balance, faculty.ending_balance'
         ' FROM users'
-        ' JOIN professors_point_info AS prof ON users.user_id = prof.user_id'
-        ' WHERE prof.year = ?',
+        ' JOIN faculty_point_info AS faculty ON users.user_id = faculty.user_id'
+        ' WHERE faculty.year = ?',
         (year,)
     ).fetchall()
 
@@ -269,7 +272,7 @@ def get_professor_point_info(year):
             'required_point': row['credit_due'],
             'prev_balance': row['previous_balance'],
             'ending_balance': row['ending_balance'],
-            'profile_status': profile_status # { start_year, end_year, active_status, user_role }
+            'profile_status': profile_status # { start_year, end_year, active_status, role }
         })
     return faculties
 
@@ -283,25 +286,25 @@ def insert_users(user_name, user_email, user_ucinetid, is_admin):
     db.commit()
     return
 
-def insert_users_status(user_ucinetid, start_year, user_role, active_status):
+def insert_faculty_status(user_ucinetid, start_year, role, active_status):
     db = get_db()
     user = get_exist_user(user_ucinetid)
     user_id = user['user_id']
     db.execute(
-        'INSERT INTO users_status (user_id, start_year, user_role, active_status)'
+        'INSERT INTO faculty_status (user_id, start_year, role, active_status)'
         ' VALUES (?, ?, ?, ?)',
-        (user_id, start_year, user_role, active_status)
+        (user_id, start_year, role, active_status)
     )
     db.commit()
     return
 
-def insert_professors_point_info(user_id, year, previous_balance, grad_count, grad_students, user_role):
-    credit_due = get_faculty_credit_due_by_role(user_role)
+def insert_faculty_point_info(user_id, year, previous_balance, grad_count, grad_students, role):
+    credit_due = get_faculty_credit_due_by_role(role)
     ending_balance = round(get_yearly_ending_balance(user_id, year, grad_count, grad_students, previous_balance, credit_due), 4)
 
     db = get_db()
     db.execute(
-        'INSERT INTO professors_point_info (user_id, year, previous_balance, ending_balance, credit_due, grad_count, grad_students)'
+        'INSERT INTO faculty_point_info (user_id, year, previous_balance, ending_balance, credit_due, grad_count, grad_students)'
         ' VALUES (?, ?, ?, ?, ?, ?, ?)',
         (user_id, year, previous_balance, ending_balance, credit_due, grad_count, grad_students)
     )
