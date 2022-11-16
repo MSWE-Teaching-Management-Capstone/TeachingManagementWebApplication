@@ -166,7 +166,8 @@ def upload_user_file():
         #   I need to insert all data in the scheduled_teaching beforhand  
         #   (rule: Points are divided equally between the instructors for a co-taught course.)
 
-        # TODO: call calculate professor's point API (written by ying-ru)
+        # TODO: call calculate professor's point API (written by ying-ru): update_yearly_ending_balance(user_id, year, is_recursive) ??   (send academic year to ying-ru)
+                    
         
         remove_upload_file(file)
 

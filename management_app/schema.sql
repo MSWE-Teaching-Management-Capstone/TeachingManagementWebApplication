@@ -15,17 +15,17 @@ CREATE TABLE users (
   admin INTEGER NOT NULL -- SQLite does not have a separate Boolean storage class. Instead, Boolean values are stored as integers 0 (false) and 1 (true).
 );
 
-CREATE TABLE users_status (
+CREATE TABLE faculty_status (
   user_id INTEGER,
   start_year INTEGER,
   end_year INTEGER,
   active_status INTEGER NOT NULL,
-  user_role TEXT NOT NULL,
+  role TEXT NOT NULL,
   PRIMARY KEY (user_id, start_year),
   FOREIGN KEY (user_id) REFERENCES users (user_id)
 );
 
-CREATE TABLE professors_point_info (
+CREATE TABLE faculty_point_info (
   user_id INTEGER,
   year INTEGER,
   previous_balance REAL,
@@ -69,10 +69,10 @@ CREATE TABLE exceptions (
   FOREIGN KEY (user_id) REFERENCES users (user_id)
 );
 
-CREATE TABLE points_constant (
+CREATE TABLE rules (
   rule_id INTEGER PRIMARY KEY, -- AUTOINCREMENT
   rule_name TEXT NOT NULL,
-  points REAL
+  value REAL
 );
 
 CREATE TABLE logs (

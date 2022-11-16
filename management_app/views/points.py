@@ -17,20 +17,20 @@ def calculate_teaching_point_val(course_title_id, num_of_enrollment, offload_or_
 
     db = get_db()
     rows = db.execute(
-        'SELECT * FROM points_constant'
+        'SELECT * FROM rules'
     ).fetchall()
 
     for row in rows:
         if row['rule_name'] == "Category 0":
-            point_c0 = row['points']
+            point_c0 = row['value']
         if row['rule_name'] == "Category 1":
-            point_c1 = row['points']
+            point_c1 = row['value']
         if row['rule_name'] == "Category 2":
-            point_c2 = row['points']
+            point_c2 = row['value']
         if row['rule_name'] == "Category 3":
-            point_c3 = row['points']
+            point_c3 = row['value']
         if row['rule_name'] == "Category 4":
-            point_c4 = row['points']
+            point_c4 = row['value']
 
     row = db.execute(
         'SELECT units, course_level FROM courses '
