@@ -1,10 +1,10 @@
 DROP TABLE IF EXISTS users;
-DROP TABLE IF EXISTS users_status;
-DROP TABLE IF EXISTS professors_point_info;
+DROP TABLE IF EXISTS faculty_status;
+DROP TABLE IF EXISTS faculty_point_info;
 DROP TABLE IF EXISTS courses;
 DROP TABLE IF EXISTS scheduled_teaching;
 DROP TABLE IF EXISTS exceptions;
-DROP TABLE IF EXISTS points_constant;
+DROP TABLE IF EXISTS rules;
 DROP TABLE IF EXISTS logs;
 
 CREATE TABLE users (

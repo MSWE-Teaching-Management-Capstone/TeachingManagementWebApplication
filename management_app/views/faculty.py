@@ -6,7 +6,7 @@ from werkzeug.utils import secure_filename
 from management_app.db import get_db
 from management_app.views.auth import login_required
 from management_app.views.utils import download_file, upload_file, remove_upload_file, get_upload_filepath
-from management_app.views.points import get_faculty_credit_due_by_role, get_yearly_ending_balance
+from management_app.views.points import get_faculty_credit_due_by_role, calculate_yearly_ending_balance
 
 faculty = Blueprint('faculty', __name__, url_prefix='/faculty')
 
@@ -300,7 +300,7 @@ def insert_faculty_status(user_ucinetid, start_year, role, active_status):
 
 def insert_faculty_point_info(user_id, year, previous_balance, grad_count, grad_students, role):
     credit_due = get_faculty_credit_due_by_role(role)
-    ending_balance = round(get_yearly_ending_balance(user_id, year, grad_count, grad_students, previous_balance, credit_due), 4)
+    ending_balance = round(calculate_yearly_ending_balance(user_id, year, grad_count, previous_balance, credit_due), 4)
 
     db = get_db()
     db.execute(
