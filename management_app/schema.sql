@@ -98,7 +98,6 @@ VALUES
   ('Role-PoT up for tenure', 6.5),
   ('Role-Assistant POT (1st year)', 5),
   ('Role-Assistant POT (2nd+ year)', 5.5),
-  ('Role-Staff', 0),
   ('Category 0', 1.5),
   ('Category 1', 1.25),
   ('Category 2', 1),
