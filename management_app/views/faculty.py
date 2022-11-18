@@ -6,7 +6,7 @@ from werkzeug.utils import secure_filename
 from management_app.db import get_db
 from management_app.views.auth import login_required
 from management_app.views.utils import download_file, upload_file, remove_upload_file, get_upload_filepath
-from management_app.views.points import get_faculty_credit_due_by_role, calculate_yearly_ending_balance
+from management_app.views.points import calculate_yearly_ending_balance, get_faculty_roles
 
 faculty = Blueprint('faculty', __name__, url_prefix='/faculty')
 
@@ -52,15 +52,7 @@ def upload():
 @faculty.route('/create', methods=['GET', 'POST'])
 @login_required
 def create():
-    # TODO: get role from database
-    role_options = [
-        'tenured research faculty',
-        'assistant professor (1st year)',
-        'assistant professor (2nd+ year)',
-        'tenured POT',
-        'assistant POT (1st year)',
-        'assistant POT (2nd+ year)'
-    ]
+    role_options = get_faculty_roles()
 
     if request.method == 'POST':
         error = None
@@ -68,8 +60,6 @@ def create():
         user_ucinetid = request.form['user_ucinetid']
         email = request.form['email']
         role = request.form['role']
-        grad_count = request.form['grad_count']
-        grad_students = request.form['grad_students']
 
         if not name:
             error = 'Name is required. '
@@ -79,8 +69,6 @@ def create():
             error += 'Email is required. '
         if not role:
             error += 'User Role is required. '
-        if not grad_count:
-            error += 'Grad Count is required. If no grad count, please fill 0. '
 
         if error is not None:
             flash(error, 'error')
@@ -109,14 +97,14 @@ def process_user_file(file_path, sheet__index, sheet__index_name):
                 user_name = row[1]
                 user_email = row[2]
                 user_ucinetid = row[3]
-                role = row[4]
+                role = row[4].lower()
                 is_active = row[5]
                 is_admin = row[6]
 
                 db = get_db()
-                row = get_exist_user(user_ucinetid) # Check exist user by ucinetid
+                user = get_exist_user(user_ucinetid) # Check exist user by ucinetid
 
-                if row is None:
+                if user is None:
                     try:
                         # If role is staff, just keep admin flag in users table and no need to know staff's active role range
                         insert_users(user_name, user_email, user_ucinetid, is_admin)
@@ -139,6 +127,8 @@ def process_user_file(file_path, sheet__index, sheet__index_name):
 
 def process_professors_point_file(file_path, sheet__index, sheet__index_name):
     error = None
+    faculty_roles = get_faculty_roles()
+
     try:
         df = pd.read_excel(file_path, sheet_name=sheet__index or sheet__index_name)
         #Check if NaN in the sheet
@@ -157,9 +147,7 @@ def process_professors_point_file(file_path, sheet__index, sheet__index_name):
             grad_count = row[3]
             grad_students = row[4]
 
-            db = get_db()
             user = get_exist_user(user_ucinetid)
-
             if user is None:
                 error = 'User is not existed in the system'
             else:
@@ -171,19 +159,22 @@ def process_professors_point_file(file_path, sheet__index, sheet__index_name):
                 if profile_status and profile_status['active_status'] != 1:
                     error = 'Failed to upload the inactive faculty point data. If you would like to assign point to inactive faculty, please activate the faculty through UI first.'
                 else:
-                    role = profile_status['role']
+                    role = profile_status['role'].lower()
+                    credit_due = faculty_roles[role]
+
                     # TODO: Need to remove this later and use the last year
                     previous_balance = get_yearly_previous_balance(user_id, year)
                     if previous_balance is None:
                         previous_balance = row[5]
 
+                    db = get_db()
                     try:
-                        insert_faculty_point_info(user_id, year, previous_balance, grad_count, grad_students, role)
+                        insert_faculty_point_info(user_id, year, previous_balance, grad_count, grad_students, role, credit_due)
                     except db.IntegrityError:
                         print('INTEGRITY ERROR\n', traceback.print_exc())
                         error = 'Database insert error. Please refresh and upload correct file with data of a new academic year.'
     except:
-        error = 'Failed to upload. Please refresh and upload the correct data format again.'
+        error = 'Failed to upload. Please refresh and upload the correct format with new academic year and active users data again.'
 
     if error is not None:
         flash(error, 'error')
@@ -209,17 +200,18 @@ def get_user_yearly_status(user_id, year):
     profile = {}
     return_row = None
     for row in rows:
-        start_year = row['start_year']
-        end_year = row['end_year']
+        if row is not None:
+            start_year = row['start_year']
+            end_year = row['end_year']
 
-        # If end_year is Null, it's the latest result
-        # If end_year is no Null, continue to find result
-        if end_year is None and start_year <= year:
-            return_row = row
-        elif start_year <= year and end_year != year:
-            return_row = row
-        elif start_year <= year and end_year == year:
-            return_row = row
+            # If end_year is Null, it's the latest result
+            # If end_year is no Null, continue to find result
+            if end_year is None and start_year <= year:
+                return_row = row
+            elif start_year <= year and end_year != year:
+                return_row = row
+            elif start_year <= year and end_year == year:
+                return_row = row
 
     if return_row is not None:
         profile['start_year'] = return_row['start_year']
@@ -262,18 +254,19 @@ def get_professor_point_info(year):
     ).fetchall()
 
     for row in data:
-        # get user yearly profile_status first
-        user_id = row['user_id']
-        profile_status = get_user_yearly_status(user_id, year)
+        if row is not None:
+            # get user yearly profile_status first
+            user_id = row['user_id']
+            profile_status = get_user_yearly_status(user_id, year)
 
-        faculties.append({
-            'name': row['user_name'],
-            'email': row['user_email'],
-            'required_point': row['credit_due'],
-            'prev_balance': row['previous_balance'],
-            'ending_balance': row['ending_balance'],
-            'profile_status': profile_status # { start_year, end_year, active_status, role }
-        })
+            faculties.append({
+                'name': row['user_name'],
+                'email': row['user_email'],
+                'required_point': row['credit_due'],
+                'prev_balance': row['previous_balance'],
+                'ending_balance': row['ending_balance'],
+                'profile_status': profile_status # { start_year, end_year, active_status, role }
+            })
     return faculties
 
 def insert_users(user_name, user_email, user_ucinetid, is_admin):
@@ -298,8 +291,7 @@ def insert_faculty_status(user_ucinetid, start_year, role, active_status):
     db.commit()
     return
 
-def insert_faculty_point_info(user_id, year, previous_balance, grad_count, grad_students, role):
-    credit_due = get_faculty_credit_due_by_role(role)
+def insert_faculty_point_info(user_id, year, previous_balance, grad_count, grad_students, role, credit_due):
     ending_balance = round(calculate_yearly_ending_balance(user_id, year, grad_count, previous_balance, credit_due), 4)
 
     db = get_db()

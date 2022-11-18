@@ -36,7 +36,7 @@ def calculate_teaching_point_val(course_title_id, num_of_enrollment, offload_or_
         'SELECT units, course_level FROM courses '
         ' WHERE course_title_id = ?', (course_title_id,)
     ).fetchone()
-    
+
     units = row['units']
     course_level = row['course_level']    
 
@@ -76,25 +76,18 @@ def calculate_teaching_point_val(course_title_id, num_of_enrollment, offload_or_
             return point_c4
     return 0
 
-def get_faculty_credit_due_by_role(role):
-    # TODO: Faculty Up for Tenure: 3.5 points, PoT up for tenure: 6.5
-    # TODO: make it dynamic
-    required_point = 0
-    if role == 'tenured research faculty':
-        required_point = 3.5
-    elif role == 'assistant professor (1st year)':
-        required_point = 1
-    elif role == 'assistant professor (2nd+ year)':
-        required_point = 2.5
-    elif role == 'tenured POT':
-        required_point = 6.5
-    elif role == 'assistant POT (1st year)':
-        required_point = 5
-    elif role == 'assistant POT (2nd+ year)':
-        required_point = 5.5
-    elif role == 'staff':
-        required_point = 0
-    return required_point
+def get_faculty_roles():
+    # Get credit_due by faculty_role from the database
+    # { Role1: point1, Role2: point2... }
+    faculty_roles = {}
+    db = get_db()
+    rows = db.execute('SELECT * FROM rules').fetchall()
+    for row in rows:
+        if row is not None:
+            if 'role' in row['rule_name'].lower():
+                key = row['rule_name'].split('-')[1].lower()
+                faculty_roles[key] = row['value']
+    return faculty_roles
 
 def get_yearly_teaching_points(user_id, year):
     # Note: year comes from faculty_point_info table, it represents the start of an an academic year
@@ -158,6 +151,8 @@ def update_yearly_ending_balance(user_id, year):
             (user_id, y)
         ).fetchone()
 
+        # Use stored credit_due in faculty_point_info table to re-calculate
+        # instead of rule_name stored in rule table due to rules of point policy may change
         if row is not None:
             grad_count = row['grad_count']
             credit_due = row['credit_due']
@@ -165,8 +160,6 @@ def update_yearly_ending_balance(user_id, year):
             ending_balance = row['ending_balance']
 
             if y == year:
-                # TODO: confirm: We don't store the original teaching_points but only total ending_points
-                # If we want to calcalate "diff", need to pass the original teaching_point value when enrollment get updated
                 new_ending_balance = calculate_yearly_ending_balance(user_id, y, grad_count, previous_balance, credit_due)
                 diff = new_ending_balance - ending_balance
                 ending_balance += diff
