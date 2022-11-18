@@ -2,6 +2,7 @@ import pandas as pd
 import traceback
 from flask import Blueprint, render_template, request, redirect, url_for, flash
 from werkzeug.utils import secure_filename
+from datetime import datetime
 
 from management_app.db import get_db
 from management_app.views.auth import login_required
@@ -57,13 +58,13 @@ def create():
     if request.method == 'POST':
         error = None
         name = request.form['name']
-        user_ucinetid = request.form['user_ucinetid']
+        ucinetid = request.form['ucinetid']
         email = request.form['email']
         role = request.form['role']
 
         if not name:
             error = 'Name is required. '
-        if not user_ucinetid:
+        if not ucinetid:
             error += 'UCI NetID is required. '
         if not email:
             error += 'Email is required. '
@@ -73,9 +74,34 @@ def create():
         if error is not None:
             flash(error, 'error')
         else:
-            #TODO: need to insert new record in database
-            return redirect(url_for('faculty.index'))
-    return render_template('faculty/create.html', role_options=role_options)
+            try:
+                db = get_db()
+                cursor = db.cursor()
+                cursor.execute(
+                    'INSERT INTO users (user_name, user_email, user_ucinetid, admin)'
+                    ' VALUES (?, ?, ?, ?)',
+                    (name, email, ucinetid, 0)
+                )
+
+                user_id = cursor.lastrowid
+                start_year = datetime.now().year
+                cursor.execute(
+                    'INSERT INTO faculty_status (user_id, start_year, role, active_status)'
+                    ' VALUES (?, ?, ?, ?)',
+                    (user_id, start_year, role, 1)
+                )
+                db.commit()
+            except:
+                error = 'Database insert error. User is already existed.'
+
+            if error is None:
+                flash('Add faculty member successfully! You can upload faculty point for new academic year data.', 'success')
+            else:
+                flash(error, 'error')
+        return redirect(url_for('faculty.create', role_options=role_options))
+
+    if request.method == 'GET':
+        return render_template('faculty/create.html', role_options=role_options)
 
 def process_user_file(file_path, sheet__index, sheet__index_name):
     error = None

@@ -4,14 +4,14 @@
 {% block header %}Add Faculty Member{% endblock %}
 
 {% block content %}
-<form method="POST" action="#" enctype="multipart/form-data" class="col-lg-6 col-sm-12">
+<form method="POST" action="{{ url_for('faculty.create') }}" enctype="multipart/form-data" class="col-lg-6 col-sm-12">
   <div class="mb-3">
     <label for="name">Name*</label>
     <input name="name" type="text" class="form-control" id="name" placeholder="Anteater Smit" value="{{ request.form['name'] }}" required>
   </div>
   <div class="mb-3">
-    <label for="user_ucinetid">UCI NetID*</label>
-    <input name="user_ucinetid" type="text" class="form-control" id="user_ucinetid" placeholder="anteater1" value="{{ request.form['user_ucinetid'] }}" required>
+    <label for="ucinetid">UCI NetID*</label>
+    <input name="ucinetid" type="text" class="form-control" id="ucinetid" placeholder="anteater1" value="{{ request.form['ucinetid'] }}" required>
   </div>
   <div class="mb-3">
     <label for="email">Email address*</label>
@@ -19,11 +19,11 @@
   </div>
   <div>
     <div class="mb-3 d-flex">
-      <label class="align-self-center" for="user_role" style="width: 160px;">Faculty Role*&nbsp;</label>
-      <select class="form-select align-self-center" id="user_role" aria-label="Faculty Role" name="user_role" required onchange="handleRoleSelection(this)">
+      <label class="align-self-center" for="role" style="width: 160px;">Faculty Role*&nbsp;</label>
+      <select class="form-select align-self-center" id="role" aria-label="Faculty Role" name="role" required onchange="handleRoleSelection(this)">
         <option value="">None</option>
-        {% for role, point in role_options.items() %}
-        <option value="{{ role }}" data-point="{{ point }}" id="user_role_option">{{ role }}</option>
+        {% for option, point in role_options.items() %}
+        <option value="{{ option }}" data-point="{{ point }}" id="user_role_option">{{ option }}</option>
         {% endfor %}
       </select>
     </div>
