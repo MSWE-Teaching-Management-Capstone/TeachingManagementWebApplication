@@ -25,16 +25,21 @@ def offerings():
         courses = []       
         rows = db.execute(
             'SELECT DISTINCT year FROM scheduled_teaching ORDER BY year ASC'
-        ).fetchall()
+        ).fetchall()          
 
         if rows != []:
-            y_start = rows[0]['year']
-            y_end = y_start + 1
+            min_quarter = db.execute(
+            'SELECT DISTINCT quarter FROM scheduled_teaching WHERE year = ? ORDER BY quarter ASC', (rows[-1]['year'],)
+            ).fetchone()['quarter']           
         
             # generate year options
             for row in rows:
                 year = row['year']
                 year_options.append(str(year) + '-' + str(year+1))
+
+            # if the biggest year don't have quarter 1, then this biggest year can't be the start of the year period
+            if min_quarter != '1':
+                year_options.pop()
 
             # todays_date = date.today()  # creating the date object of today's date        
             # y_start, y_end = todays_date.year, todays_date.year + 1
@@ -42,11 +47,15 @@ def offerings():
             if year_selected != None:
                 y_start = year_selected.split('-')[0]
                 y_end = year_selected.split('-')[1]
+            else:
+                y_start = year_options[-1].split('-')[0]
+                y_end = year_options[-1].split('-')[1]
 
             courses = db.execute(
                 'SELECT year, quarter, user_name, st.course_title_id, course_sec, enrollment'
                 ' FROM scheduled_teaching st JOIN courses ON st.course_title_id = courses.course_title_id JOIN users ON st.user_id = users.user_id'
-                ' WHERE (year = ? AND quarter = 1) OR (year = ? AND quarter = 2) OR (year = ? AND quarter = 3)', (y_start, y_end, y_end)
+                ' WHERE (year = ? AND quarter = 1) OR (year = ? AND quarter = 2) OR (year = ? AND quarter = 3)'
+                ' ORDER BY year DESC, quarter DESC, st.course_title_id', (y_start, y_end, y_end)
             ).fetchall()
             
         return render_template('courses/offerings.html', courses=courses, year_options=year_options)
@@ -166,7 +175,7 @@ def upload_user_file():
         #   I need to insert all data in the scheduled_teaching beforhand  
         #   (rule: Points are divided equally between the instructors for a co-taught course.)
 
-        # TODO: call calculate professor's point API (written by ying-ru): update_yearly_ending_balance(user_id, year, is_recursive) ??   (send academic year to ying-ru)
+        # TODO: call calculate professor's point API (written by ying-ru): update_yearly_ending_balance(user_id, year)  (send academic year to ying-ru)
                     
         
         remove_upload_file(file)
