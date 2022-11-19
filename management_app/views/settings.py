@@ -1,4 +1,4 @@
-from flask import Blueprint, Response, render_template, flash, make_response, session, request
+from flask import Blueprint, Response, render_template, flash, make_response, redirect, url_for, session, request
 
 from management_app.views.auth import login_required
 from management_app.db import get_db
@@ -40,9 +40,15 @@ def remove_admin(id):
 @login_required
 def point_policy():
     db = get_db()
-    rules = db.execute('SELECT rule_name, points FROM points_constant').fetchall()
+    rules = db.execute('SELECT * FROM rules').fetchall()
     return render_template('settings/point-policy.html', rules=rules)
 
+@settings.route('/point-policy/rules/<id>', methods=['POST'])
+@login_required
+def edit_rule_point_value(id):
+    db = get_db()
+    update_rule_point_value(db, id, request.form['point-value'])
+    return redirect(url_for('settings.point_policy'))
 
 def get_users_and_admins(db):
     admins = []
@@ -74,3 +80,7 @@ def delete_admin(db, id):
 def is_only_admin(db):
     res = db.execute('SELECT COUNT(admin) AS count FROM users WHERE admin IS TRUE').fetchone()
     return res['count'] == 1
+
+def update_rule_point_value(db, id, value):
+    db.execute('UPDATE rules SET value = ? WHERE rule_id = ?', (value, id))
+    db.commit()
