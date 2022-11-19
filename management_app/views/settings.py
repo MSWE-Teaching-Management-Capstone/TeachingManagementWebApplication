@@ -54,8 +54,9 @@ def get_users_and_admins(db):
     admins = []
     users = []
     res = db.execute("""
-            SELECT users.user_id, user_name, user_email, user_ucinetid, admin, role
-            FROM users LEFT JOIN faculty_status ON users.user_id = faculty_status.user_id
+            SELECT u.user_id, u.user_name, u.user_email, u.user_ucinetid, u.admin, fs.role
+            FROM users AS u LEFT JOIN faculty_status AS fs ON u.user_id = fs.user_id
+            WHERE (fs.end_year IS NULL AND fs.active_status IS TRUE) OR fs.role IS NULL
         """)
     for user in res.fetchall():
         if user['admin']:
