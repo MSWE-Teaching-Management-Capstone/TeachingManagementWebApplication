@@ -1,13 +1,13 @@
 from management_app.db import get_db
 
-def calculate_teaching_point_val(course_title_id, num_of_enrollment, offload_or_recall_flag, year, quarter):
-    # TODO: check policy and mental model
-
+def calculate_teaching_point_val(course_title_id, num_of_enrollment, offload_or_recall_flag, year, quarter, user_id, num_of_co_taught):
     # rules: 
     # #1: if P course (e.g. "CS297P") -> if offload_or_recall_flag is 0 then get 1 point; if offload_or_recall_flag is 1 then get 0 point
     # #2: if num_of_enrollment < 8: get 0 pt
-    # #3: if not P course -> give points according to the category (3 input: num_of_enrollment, units, course_level)
-    
+    # #3: if not P course -> give points according to the category 0-4 (3 input: num_of_enrollment, units, course_level)
+    # #4: if not P course -> Points are divided equally between the instructors for a co-taught course.
+    # #5: if not P course -> Combined grad/undergraduate classes that are offered simultaneously will be given credit according to the class which would have yielded the most points (typically the undergraduate one) plus .25 points. (a 2 credit course can not be combined with a 4 unit course)
+
     # initial db:
     # Category 0: 1.5 points
     # Category 1: 1.25 points
@@ -38,7 +38,7 @@ def calculate_teaching_point_val(course_title_id, num_of_enrollment, offload_or_
     ).fetchone()
 
     units = row['units']
-    course_level = row['course_level']    
+    course_level = row['course_level']
 
     # rules #1
     if course_title_id[-1] == "P":
@@ -50,15 +50,13 @@ def calculate_teaching_point_val(course_title_id, num_of_enrollment, offload_or_
     elif num_of_enrollment < 8:
         return 0
     # rules #3
+    # Cat 0 applies to 6 unit courses
     elif units == 6:
-        return point_c0
-    elif (course_level == "Undergrad" and num_of_enrollment >= 200) or (course_level == "Grad" and num_of_enrollment >= 100):
-        return point_c1
-    elif (course_level == "Undergrad" and num_of_enrollment > 20 and num_of_enrollment <= 199) or (course_level == "Grad" and num_of_enrollment > 20 and num_of_enrollment <= 99):
-        return point_c2
-    elif (course_level == "Undergrad" and num_of_enrollment <= 20) or (course_level == "Grad" and num_of_enrollment <= 20):
-        return point_c3
-    elif course_level == "Undergrad" and units == 2:
+        return point_c0 / num_of_co_taught
+    # Cat 4 applies to 2 unit courses
+    # a two unit undergraduate course can also be a co-taught course
+    # elif course_level == "Undergrad" and units == 2:
+    elif units == 2:
         # 2020-2021 (including: 2020 Fall(1) - 2021 Winter(2) & Spring(3))
         if quarter == 1:
             y1 = year
@@ -69,12 +67,31 @@ def calculate_teaching_point_val(course_title_id, num_of_enrollment, offload_or_
             y2 = year
             y3 = year
 
-        sql_statement = f"SELECT COUNT(*) FROM scheduled_teaching WHERE ((year = {y1} AND quarter = 1) OR (year = {y2} AND quarter = 2) OR (year = {y3} AND quarter = 3)) AND teaching_point_val = {point_c4}"
-        num_of_row = db.execute(sql_statement).fetchone()         
+        # count by "teaching_point_val" column rather than by "units" column (units = 2) because we only stop giving points when the faculty is already given 0.5 in total
+        sql_statement = f"SELECT teaching_point_val FROM scheduled_teaching st JOIN courses ON st.course_title_id = courses.course_title_id WHERE ((year = {y1} AND quarter = 1) OR (year = {y2} AND quarter = 2) OR (year = {y3} AND quarter = 3)) AND units = 2 AND user_id = {user_id}"
+        rows = db.execute(sql_statement).fetchall()
+
+        sum_of_Cat4_pnt = 0
+        for row in rows:
+            sum_of_Cat4_pnt += row['teaching_point_val']
         
-        if num_of_row[0] < 2:
-            return point_c4
-    return 0
+        earned_pnt = point_c4 / num_of_co_taught
+        pnt_quota = 0.5 - sum_of_Cat4_pnt
+        if pnt_quota < earned_pnt:
+            return pnt_quota
+        else:
+            return earned_pnt
+    # Cat 1-3 applies to 4 unit courses
+    elif units == 4:
+        if (course_level == "Undergrad" and num_of_enrollment >= 200) or (course_level == "Grad" and num_of_enrollment >= 100):
+            return point_c1 / num_of_co_taught
+        elif (course_level == "Undergrad" and num_of_enrollment > 20 and num_of_enrollment <= 199) or (course_level == "Grad" and num_of_enrollment > 20 and num_of_enrollment <= 99):
+            return point_c2 / num_of_co_taught      
+        else:  # (course_level == "Undergrad" and num_of_enrollment <= 20) or (course_level == "Grad" and num_of_enrollment <= 20)
+            return point_c3 / num_of_co_taught
+    else:
+        # e.g. 1 unit course
+        return 0  
 
 def get_faculty_roles():
     # Get credit_due by faculty_role from the database

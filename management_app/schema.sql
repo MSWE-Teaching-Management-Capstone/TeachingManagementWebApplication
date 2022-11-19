@@ -42,7 +42,8 @@ CREATE TABLE courses (
   course_title_id TEXT UNIQUE NOT NULL,
   course_title TEXT NOT NULL,
   units INTEGER NOT NULL,
-  course_level TEXT
+  course_level TEXT,
+  combine_with TEXT
 );
 
 CREATE TABLE scheduled_teaching (
