@@ -1,0 +1,66 @@
+{% extends 'base.html' %}
+
+{% block title %} Add Course Offering {% endblock %}
+{% block header %} Add Course Offering {% endblock %}
+
+																								
+
+{% block content %}
+<form method="POST" action="#" enctype="multipart/form-data" class="col-lg-6 col-sm-12">
+  <div class="mb-3 d-flex">
+    <label class="align-self-center" for="year" style="width: 160px;">Year*&nbsp;</label>
+    <input name="year" type="text" class="form-control" id="year" placeholder="e.g. 2022" value="{{ request.form['year'] }}" required>
+  </div>
+  <div class="mb-3 d-flex">
+    <label class="align-self-center" for="quarter" style="width: 160px;">Quarter*&nbsp;</label>
+    <select class="form-select align-self-center" id="quarter" aria-label="Quarter" name="quarter" required>
+      <option value=""></option>
+      <option value="1">1 (Fall)</option>
+      <option value="2">2 (Winter)</option>
+      <option value="3">3 (Spring)</option>      
+    </select>
+  </div>
+  <div class="mb-3 d-flex">
+    <label class="align-self-center" for="ucinetid" style="width: 160px;">UCINetID*&nbsp;</label>
+    <select class="form-select align-self-center" id="ucinetid" aria-label="UCINetID" name="ucinetid" required>
+        <option value=""></option>
+        {% for ucinetid in ucinetid_options %}
+            <option value="{{ ucinetid }}">{{ ucinetid }}</option>
+        {% endfor %}
+    </select>
+  </div>
+  <div class="mb-3 d-flex">
+    <label class="align-self-center" for="multi_ucinetid" style="width: 160px;">Co-taught UCINetID&nbsp;</label>
+    <input name="multi_ucinetid" type="text" class="form-control" id="multi_ucinetid" placeholder="e.g. ucinetid1, ucinetid2, ..." value="{{ request.form['multi_ucinetid'] }}">
+  </div>
+  <div class="mb-3 d-flex">
+    <label class="align-self-center" for="course_title_id" style="width: 160px;">Course Title ID*&nbsp;</label>
+    <input name="course_title_id" type="text" class="form-control" id="course_title_id" placeholder="e.g. CS122A" value="{{ request.form['course_title_id'] }}" required>
+  </div>
+  <div class="mb-3 d-flex">
+    <label class="align-self-center" for="course_sec" style="width: 160px;">Course Section*&nbsp;</label>
+    <input name="course_sec" type="text" class="form-control" id="course_sec" placeholder="e.g. A1" value="{{ request.form['course_sec'] }}" required>
+  </div>
+  <div class="mb-3 d-flex">
+    <label class="align-self-center" for="num_of_enrollment" style="width: 160px;">Num of Enrollment&nbsp;</label>
+    <input name="num_of_enrollment" type="text" class="form-control" id="num_of_enrollment" placeholder="e.g. 88" value="{{ request.form['num_of_enrollment'] }}">
+  </div>
+  <div class="mb-3 d-flex">
+    <label class="align-self-center" for="offload_or_recall_flag" style="width: 160px;">Offload or Recall*&nbsp;</label>
+    <select class="form-select align-self-center" id="offload_or_recall_flag" aria-label="offload_or_recall_flag" name="offload_or_recall_flag" required>
+      <option value=""></option>
+      <option value="1">1</option>
+      <option value="0">0</option>
+    </select>
+  </div>
+  <button type="button" class="btn btn-secondary">
+    <a href="{{ url_for('courses.offerings') }}" style="text-decoration: none; color: white;">Cancel</a>
+  </button>
+  <button type="submit" class="btn btn-primary" id="addCourseOffering">Save</button>
+</form>
+{% endblock %}
+
+{% block scripts %}
+<script>    
+</script>
+{% endblock scripts %}
