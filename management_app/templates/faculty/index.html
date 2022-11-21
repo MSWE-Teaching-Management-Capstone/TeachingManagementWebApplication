@@ -84,7 +84,7 @@
             </button>
             <ul class="dropdown-menu">
               <li>
-                <a class="dropdown-item" href="#"><i class="fa-solid fa-pen-to-square"></i> Edit</a>
+                <a class="dropdown-item" href="{{ url_for('faculty.update', id=faculty['user_id'], year=faculty['academic_year']) }}"><i class="fa-solid fa-pen-to-square"></i> Edit</a>
               </li>
               <li>
                 <a class="dropdown-item" href="#"><i class="fa-solid fa-trash""></i></i> Delete</a>

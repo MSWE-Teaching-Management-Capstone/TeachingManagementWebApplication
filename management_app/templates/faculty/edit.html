@@ -1,0 +1,131 @@
+{% extends 'base.html' %}
+
+{% block title %}Edit Faculty Member{% endblock %}
+{% block header %}Edit Faculty Member{% endblock %}
+
+{% block content %}
+{% set year = faculty['academic_year'] %}
+{% set is_active = faculty['profile_status']['active_status'] %}
+<div>
+  <h4>Year: {{ year }}-{{ year+1 }}</h4>
+  <ul>
+    <li>Previous Year Teaching Point Balance: <b>{{ faculty['previous_balance'] }}</b></li>
+    <li>Current Ending Year Teaching Point Balance: <b>{{ faculty['ending_balance'] }}</b></li>
+    <!-- TODO: get new ending from front-end before send POST request-->
+    <!-- <li>New Ending Year Teaching Point Balance: <b id="new_ending_balance"></b></li> -->
+  </ul>
+</div>
+<form method="POST" enctype="multipart/form-data" class="col-lg-6 col-sm-12" style="padding-bottom: 60px;">
+  <div class="mb-3">
+    <label class="fw-bold" for="name">Name*</label>
+    <input name="name" type="text" class="form-control" id="name" placeholder="Anteater Smit" value="{{ request.form['name'] or faculty['name'] }}" required>
+  </div>
+  <div class="mb-3">
+    <label class="fw-bold" for="ucinetid">UCI NetID*</label>
+    <input name="ucinetid" type="text" class="form-control" id="ucinetid" placeholder="anteater1" value="{{ request.form['ucinetid'] or faculty['ucinetid'] }}" required>
+  </div>
+  <div class="mb-3">
+    <label class="fw-bold" for="email">Email address*</label>
+    <input name="email" type="email" class="form-control" id="email" placeholder="anteater1@uci.edu" value="{{ request.form['email'] or faculty['email']  }}" required>
+  </div>
+  <div class="mb-3 ">
+    {% set faculty_role = faculty['profile_status']['role'] %}
+    <div class="d-flex">
+      <label class="fw-bold" class="align-self-center" for="role" style="width: 160px;">Faculty Role*&nbsp;</label>
+      <select class="form-select align-self-center" id="role" aria-label="Faculty Role" name="role" required onchange="handleRoleSelection(this)">
+        {% for option, point in role_options.items() %}
+        <option
+          value="{{ option }}" data-point="{{ point }}" id="user_role_option"
+          {% if faculty_role== option %} selected="selected"{% endif %}
+        >
+          {{ option }}
+        </option>
+        {% endfor %}
+      </select>
+    </div>
+    <p>Please update faculty role on the edit page for the latest academic year for faculty member you would like to update.</p>
+    <ul>
+      <li>Required Credit Due: <span id="user_role_credit_due">{{ faculty['credit_due'] }}</span></li>
+    </ul>
+  </div>
+  <div class="mb-3">
+    Faculty Role History in Current System:
+    <ul>
+    {% for f in roles_status %}
+      {% if f['active_status'] %}
+      <li>
+        {{ f['start_year'] }} - {{ f['end_year'] }}: {{ f['role'] }}
+      </li>
+      {% endif %}
+    {% endfor %}
+    </ul>
+  </div>
+  <div class="mb-3">
+    <label class="fw-bold" for="grad_count">Grad Count*</label>
+    <input name="grad_count" type="text" class="form-control" id="grad_count" placeholder="3.33" value="{{ request.form['grad_count'] or faculty['grad_count']  }}" required>
+    <p>If no grad count, please type 0.</p>
+  </div>
+  <div class="mb-3">
+    <label class="fw-bold" for="grad_students">Grad Students</label>
+    <input name="grad_students" type="text" class="form-control" id="grad_students" placeholder="Johnny Wang, John Smith" value="{{ request.form['grad_students'] or faculty['grad_students'] }}">
+    <p>Please use comma to separate students' name.</p>
+  </div>
+  <div class="mb-3">
+    <label class="fw-bold" for="exception_point">Adjust Teaching Points</label>
+    <div class="form-check">
+      <input class="form-check-input" type="radio" name="exception_adjust" id="exception_add" value="exception_add">
+      <label class="form-check-label" for="exception_add">
+        Add
+      </label>
+    </div>
+    <div class="form-check">
+      <input class="form-check-input" type="radio" name="exception_adjust" id="exception_subtract" value="exception_subtract">
+      <label class="form-check-label" for="exception_subtract">
+        Subtract
+      </label>
+    </div>
+    <input name="exception_point" type="text" class="form-control" id="exception_point" placeholder="3.33" value="{{ request.form['exception_point'] or faculty['exception_point']  }}">
+  </div>
+  <div class="mb-3">
+    <label class="fw-bold" class="align-self-center" for="exception_category" style="width: 160px;">Exception Category&nbsp;</label>
+    <select class="form-select align-self-center" id="exception_category" aria-label="Exception Category" name="exception_category">
+      <option>None</option>
+      {% for option in exception_options %}
+      <option value="{{ option }}" id="exception_option">
+        {{ option }}
+      </option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="mb-3">
+    <label class="fw-bold" for="exception_message">Reason for Change</label>
+    <input name="exception_message" type="text" class="form-control" id="exception_message" value="{{ request.form['exception_message'] or faculty['exception_message']  }}">
+  </div>
+
+  {% if exceptions|length > 0 %}
+  <div class="mb-3">
+    <span class="fw-bold">Current Exceptions</span>
+    <ul>
+    {% for e in exceptions %}
+      <li>{{ e['exception_category'] }}: {{ e['points'] }} points {% if e['message'] %}({{ e['message'] }}){% endif %}</li>
+    {% endfor %}
+    </ul>
+  </div>
+  {% endif %}
+
+  <button type="button" class="btn btn-secondary">
+    <a href="{{ url_for('faculty.index') }}" style="text-decoration: none; color: white;">Cancel</a>
+  </button>
+  <button type="submit" class="btn btn-primary" id="addFacultyMember">Save</button>
+</form>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  function handleRoleSelection(select) {
+    const option = select.options[select.selectedIndex];
+    const point = option.dataset.point
+    document.getElementById('user_role_credit_due').innerHTML = point;
+  }
+</script>
+{% endblock scripts %}

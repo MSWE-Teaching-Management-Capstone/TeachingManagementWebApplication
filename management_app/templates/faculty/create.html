@@ -44,7 +44,7 @@
     function handleRoleSelection(select) {
       const option = select.options[select.selectedIndex];
       const point = option.dataset.point
-      document.getElementById('user_role_credit_due').innerHTML = `${option.value} ${point}`;
+      document.getElementById('user_role_credit_due').innerHTML = point;
     }
 </script>
 {% endblock scripts %}
