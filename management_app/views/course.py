@@ -120,8 +120,7 @@ def upload_user_file():
         file_path = get_upload_filepath(filename)
         upload_file(file)
 
-        quarterDict = {"Fall": 1, "Winter": 2, "Spring": 3, "Summer": 4}
-        db = get_db()
+        quarterDict = {"fall": 1, "winter": 2, "spring": 3, "summer": 4}
 
         df = pd.read_excel(file_path, sheet_name=1)
         rows = df.values.tolist()
@@ -130,8 +129,10 @@ def upload_user_file():
         for row in rows:
             year = row[0]
             quarter = row[1]
-            if quarter in quarterDict.keys():
-                quarter = quarterDict[quarter]
+            if type(quarter) == str:
+                quarter = quarter.lower()
+                if quarter in quarterDict.keys():
+                    quarter = quarterDict[quarter]                    
             
             academic_year = get_academic_year(year, quarter)            
             
