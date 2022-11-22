@@ -93,7 +93,7 @@ def calculate_teaching_point_val(course_title_id, num_of_enrollment, offload_or_
         # e.g. 1 unit course
         return 0  
 
-def get_faculty_roles():
+def get_faculty_roles_credit_due():
     # Get credit_due by faculty_role from the database
     # { Role1: point1, Role2: point2... }
     faculty_roles = {}
@@ -128,7 +128,9 @@ def get_yearly_teaching_points(user_id, year):
 
 def get_grad_mentoring_points(grad_count):
     # TODO/Note: point per grad student and extra points are temporarily hard-coded
-    grad_points = max(0.5, grad_count * 0.125)
+    grad_points = grad_count * 0.125
+    if grad_points >= 0.5:
+        grad_points = 0.5
     if grad_count >= 6:
         grad_points += 0.5 # max = 0.5 for grad_count credits
     return grad_points
@@ -147,7 +149,9 @@ def calculate_yearly_ending_balance(user_id, year, grad_count, previous_balance,
     teaching_points = get_yearly_teaching_points(user_id, year)
     grad_points = get_grad_mentoring_points(grad_count)
     exception_points = get_yearly_exception_points(user_id, year)
-    return previous_balance + teaching_points + grad_points + exception_points - credit_due
+    total = previous_balance + teaching_points + grad_points + exception_points - credit_due
+    total = round(total, 4)
+    return total
 
 def get_latest_academic_year():
     db = get_db()
@@ -184,6 +188,8 @@ def update_yearly_ending_balance(user_id, year):
                 previous_balance += diff
                 ending_balance += diff
 
+            previous_balance = round(previous_balance, 4)
+            ending_balance = round(ending_balance, 4)
             db.execute(
                 'UPDATE faculty_point_info SET previous_balance = ?, ending_balance = ?'
                 ' WHERE user_id = ? AND year = ?',

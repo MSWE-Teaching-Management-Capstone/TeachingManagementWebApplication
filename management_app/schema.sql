@@ -91,14 +91,14 @@ CREATE TABLE logs (
 INSERT INTO rules
   (rule_name, value)
 VALUES
-  ('Role-Tenured research faculty', 3.5),
-  ('Role-Faculty up for tenure', 3.5),
-  ('Role-Assistant professor (1st year)', 1),
-  ('Role-Assistant professor (2nd+ year)', 2.5),
-  ('Role-Tenured POT', 6.5),
-  ('Role-PoT up for tenure', 6.5),
-  ('Role-Assistant POT (1st year)', 5),
-  ('Role-Assistant POT (2nd+ year)', 5.5),
+  ('Role-tenured research faculty', 3.5),
+  ('Role-faculty up for tenure', 3.5),
+  ('Role-assistant professor (1st year)', 1),
+  ('Role-assistant professor (2nd+ year)', 2.5),
+  ('Role-tenured POT', 6.5),
+  ('Role-poT up for tenure', 6.5),
+  ('Role-assistant POT (1st year)', 5),
+  ('Role-assistant POT (2nd+ year)', 5.5),
   ('Category 0', 1.5),
   ('Category 1', 1.25),
   ('Category 2', 1),
