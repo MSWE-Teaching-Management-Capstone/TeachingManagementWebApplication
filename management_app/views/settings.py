@@ -66,17 +66,17 @@ def get_users_and_admins():
 
 def add_admin_status(id):
     db = get_db()
-    db.execute('UPDATE users SET admin = 1 WHERE user_id = ?', (id))
+    db.execute('UPDATE users SET admin = 1 WHERE user_id = ?', (id,))
     db.commit()
 
 def remove_admin_status(id):
     db = get_db()
-    db.execute('UPDATE users SET admin = 0 WHERE user_id = ?', (id))
+    db.execute('UPDATE users SET admin = 0 WHERE user_id = ?', (id,))
     db.commit()
 
 def delete_admin(id):
     db = get_db()
-    db.execute('DELETE FROM users WHERE user_id = ?', (id))
+    db.execute('DELETE FROM users WHERE user_id = ?', (id,))
     db.commit()
 
 def is_only_admin():
