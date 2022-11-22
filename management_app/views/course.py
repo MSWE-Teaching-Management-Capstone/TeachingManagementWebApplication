@@ -313,7 +313,7 @@ def get_combine_with(course_title_id):
     combine_with = db.execute(
         'SELECT combine_with FROM courses'
         ' WHERE course_title_id = ?', (course_title_id,)
-    ).fetchone()    
+    ).fetchone()
     return combine_with if combine_with is None else combine_with[0]
 
 def get_num_of_enrollment(num):
