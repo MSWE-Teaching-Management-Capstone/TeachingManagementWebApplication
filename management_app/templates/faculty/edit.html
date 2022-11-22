@@ -63,7 +63,7 @@
   <div class="mb-3">
     <label class="fw-bold" for="grad_count">Grad Count*</label>
     <input name="grad_count" type="text" class="form-control" id="grad_count" placeholder="3.33" value="{{ request.form['grad_count'] or faculty['grad_count']  }}" required>
-    <p>If no grad count, please type 0.</p>
+    <p>If no grad count, please type 0.0.</p>
   </div>
   <div class="mb-3">
     <label class="fw-bold" for="grad_students">Grad Students</label>
@@ -71,7 +71,7 @@
     <p>Please use comma to separate students' name.</p>
   </div>
   <div class="mb-3">
-    <label class="fw-bold" for="exception_point">Adjust Teaching Points</label>
+    <label class="fw-bold" for="exception_point">Exception Point</label>
     <div class="form-check">
       <input class="form-check-input" type="radio" name="exception_adjust" id="exception_add" value="exception_add">
       <label class="form-check-label" for="exception_add">
@@ -98,7 +98,7 @@
     </select>
   </div>
   <div class="mb-3">
-    <label class="fw-bold" for="exception_message">Reason for Change</label>
+    <label class="fw-bold" for="exception_message">Reason for Exception</label>
     <input name="exception_message" type="text" class="form-control" id="exception_message" value="{{ request.form['exception_message'] or faculty['exception_message']  }}">
   </div>
 
