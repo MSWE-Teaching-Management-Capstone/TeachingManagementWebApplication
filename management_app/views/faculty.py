@@ -283,7 +283,7 @@ def process_professors_point_file(file_path, sheet__index, sheet__index_name):
 
                     db = get_db()
                     try:
-                        insert_faculty_point_info(user_id, year, previous_balance, grad_count, grad_students, role, credit_due)
+                        insert_faculty_point_info(user_id, year, previous_balance, grad_count, grad_students, credit_due)
                     except db.IntegrityError:
                         print('INTEGRITY ERROR\n', traceback.print_exc())
                         error = 'Database insert error. Please refresh and upload correct file with data of a new academic year.'
@@ -464,8 +464,8 @@ def insert_faculty_status(user_ucinetid, start_year, role, active_status):
     db.commit()
     return
 
-def insert_faculty_point_info(user_id, year, previous_balance, grad_count, grad_students, role, credit_due):
-    ending_balance = round(calculate_yearly_ending_balance(user_id, year, grad_count, previous_balance, credit_due), 4)
+def insert_faculty_point_info(user_id, year, previous_balance, grad_count, grad_students, credit_due):
+    ending_balance = calculate_yearly_ending_balance(user_id, year, grad_count, previous_balance, credit_due)
 
     db = get_db()
     db.execute(
