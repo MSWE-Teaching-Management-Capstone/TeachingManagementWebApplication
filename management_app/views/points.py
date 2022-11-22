@@ -35,7 +35,7 @@ def calculate_teaching_point_val(course_title_id, num_of_enrollment, offload_or_
     row = db.execute(
         'SELECT units, course_level FROM courses '
         ' WHERE course_title_id = ?', (course_title_id,)
-    ).fetchone()
+    ).fetchone()    
 
     units = row['units']
     course_level = row['course_level']

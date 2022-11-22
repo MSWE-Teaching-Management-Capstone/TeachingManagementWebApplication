@@ -210,7 +210,28 @@ def create():
         return redirect(url_for('courses.offerings'))
     return render_template('courses/create.html', ucinetid_options=ucinetid_options)
 
-def is_valid_input(year, quarter, user_UCINetID_list, course_title_id, course_sec, num_of_enrollment, offload_or_recall_flag):
+def is_valid_input(year, quarter, user_UCINetID_list, course_title_id, course_sec, num_of_enrollment, offload_or_recall_flag):   
+    db = get_db()
+
+    # check the existence of an user    
+    for ucinetid in user_UCINetID_list:
+        user = db.execute(
+            'SELECT * FROM users WHERE user_ucinetid = ?', (ucinetid,)
+        ).fetchone()
+        if user is None:
+            err_msg = f"User {ucinetid} not exists in the system. Operation failed."
+            flash(err_msg, 'error')
+            return False
+
+    # check the existence of a course
+    course = db.execute(
+        'SELECT * FROM courses WHERE course_title_id = ?', (course_title_id,)
+    ).fetchone()
+    if course is None:
+        err_msg = f"Course {course_title_id} not exists in the system. Operation failed."
+        flash(err_msg, 'error')
+        return False
+    
     # data examples:
     # year	
     # quarter: 1, 2, 3, 4
@@ -219,9 +240,6 @@ def is_valid_input(year, quarter, user_UCINetID_list, course_title_id, course_se
     # course_sec: A, A1, 1, 15
     # num_of_enrollment: None or 0 or positvie integer	
     # offload_or_recall_flag: 1 or 0
-
-    print('='*50)
-    print(offload_or_recall_flag)
 
     col_name = None
     if re.match(r'\d{4}', str(year)) is None:
@@ -241,7 +259,7 @@ def is_valid_input(year, quarter, user_UCINetID_list, course_title_id, course_se
     else:        
         return True
     
-    err_msg = f"Incorrect data format on {col_name} column."
+    err_msg = f"Incorrect data format on {col_name} column. Operation failed."
     flash(err_msg, 'error')
     return False
 
@@ -335,7 +353,7 @@ def get_teaching_point_val(num_of_enrollment, user_id_and_academic_year_set, use
     return teaching_point_val, user_id_and_academic_year_set, rows_dict
 
 def calculate_combined_classes_and_update_scheduled_teaching(rows_dict):
-    keys = rows_dict.keys()
+    keys = list(rows_dict.keys())
     for i in range(len(keys)):
         if keys[i] in rows_dict:
             row1_dict = rows_dict[keys[i]]
