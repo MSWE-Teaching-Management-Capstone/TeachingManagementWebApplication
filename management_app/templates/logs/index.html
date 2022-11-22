@@ -25,11 +25,32 @@
 {% endblock %}
 
 {% block content %}
+    <div class="row" style="margin: 20px 0;">
+        <form method="POST" action="{{ url_for('logs.get_admin_exceptions_with_daterange') }}" enctype="multipart/form-data">
+            <div class="form-group mb-3">
+                <label for="start-date">Start date(UTC):</label>
+                <input type="date" id="start-date" name="start-date"></div>
+            <div style="margin: 15px 0"></div>
+            <div class="form-group mb-3">
+                <label for="end-date">End date(UTC):</label>
+                <input type="date" id="end-date" name="end-date"></div>
+
+            <div>
+                <button type="submit" class="btn btn-primary" id="searchWithDateRange" disabled>Filter with date range
+                </button>
+                <a href={{ url_for('logs.index') }}>
+                    <button type="button" class="btn btn-secondary" id="resetSearch" data-toggle="tooltip"
+                            data-placement="bottom"
+                            title="Only clear date range filter. Other filters can be cleared by the grey button on the right">
+                        Clear this filter
+                    </button>
+                </a>
+            </div>
+        </form>
+    </div>
 
 
     <div class="row" style="margin: 20px 0;">
-
-
         <div class="panel-footer" style="height:800px; overflow: auto;">
             <table
                     id="table-exception"
@@ -45,8 +66,8 @@
             >
                 <thead>
                 <tr>
-                    <th data-field="timeStamp" data-filter-control="datepicker" data-sortable="True"
-                        data-filter-order-by="desc">Time Stamp
+                    <th data-field="timeStamp" data-sortable="True"
+                        data-filter-order-by="desc">Time Stamp(Local)
                     </th>
                     <th data-field="owner" data-filter-control="select" data-sortable="True">Owner</th>
                     <th data-field="affected" data-filter-control="select" data-sortable="True">Affected Faculty
@@ -62,7 +83,7 @@
                 <tbody>
                 {% for exception_log in exception_logs %}
                     <tr>
-                        <td>{{ exception_log['timeStamp'] }}</td>
+                        <th scope="row">{{ exception_log['timeStamp'] }}</th>
                         <td>{{ exception_log['owner'] }}</td>
                         <td>{{ exception_log['affected'] }}</td>
                         <td>{{ exception_log['exception'] }}</td>
@@ -81,6 +102,40 @@
     <script>
         $(function () {
             $('#table-exception').bootstrapTable()
+
+        });
+
+        const start_date = document.getElementById('start-date')
+        const end_date = document.getElementById('end-date')
+        const submitDateRangeButton = document.getElementById('searchWithDateRange')
+
+
+        start_date.addEventListener('change', (event) => {
+            console.log(event.target.value)
+            updateEndDateBoundary(event.target.value)
+            checkDateRangeSubmit()
         })
+
+        end_date.addEventListener('change', (event) => {
+            console.log(event.target.value)
+            updateStartDateBoundary(event.target.value)
+            checkDateRangeSubmit()
+        })
+
+
+        function checkDateRangeSubmit() {
+            if (start_date.value && end_date.value) {
+                submitDateRangeButton.disabled = false;
+            }
+        }
+
+        function updateStartDateBoundary(maxDate) {
+            start_date.setAttribute('max', maxDate)
+        }
+
+        function updateEndDateBoundary(minDate) {
+            end_date.setAttribute('min', minDate)
+        }
+
     </script>
 {% endblock scripts %}

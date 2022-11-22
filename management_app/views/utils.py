@@ -57,3 +57,12 @@ def check_admin(net_id):
     ).fetchone()[0]
 
     return True if res == 1 else False
+
+
+def insert_log(owner: str, user_id: None, exception_id: None, log_category: None):
+    db = get_db()
+    db.execute("INSERT INTO logs"
+               " VALUES(?, ?, ?, ?)",
+               (owner, user_id, exception_id, log_category))
+    db.commit()
+    return
