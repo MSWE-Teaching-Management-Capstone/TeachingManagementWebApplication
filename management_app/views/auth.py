@@ -75,6 +75,7 @@ def login_callback():
 
     session["google_id"] = id_info.get("sub")
     session["name"] = id_info.get("name")
+    session["email"] = id_info.get("email")
     session["domain"] = id_info.get("hd", "-1")
     session['net_id'] = id_info.get('email').split(sep='@')[0]
 

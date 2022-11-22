@@ -29,15 +29,75 @@
     <tr>
       <th scope="col">Rule</th>
       <th scope="col">Point Value</th>
+      <th scope="col"></th>
     </tr>
   </thead>
   <tbody>
     {% for rule in rules %}
       <tr>
-        <th scope="row">{{rule['name']}}</th>
-        <td>{{rule['point_value']}}</td>
+        <th scope="row">{{rule['rule_name']}}</th>
+        <td>{{rule['value']}}</td>
+        <td>
+          <div class="dropdown d-grid justify-content-end">
+            <button class="btn btn-secondary fw-bold" type="button" data-bs-toggle="dropdown" aria-expanded="false">⋮</button>
+            <ul class="dropdown-menu">
+              <li>
+                <button type="button" class="dropdown-item edit-btn"
+                        data-rule-id="{{rule['rule_id']}}"
+                        data-rule-name="{{rule['rule_name']}}"
+                        data-rule-value="{{rule['value']}}"
+                        data-bs-toggle="modal"
+                        data-bs-target="#editModal">
+                  <i class="fa-solid fa-pen-to-square"></i> Edit
+                </button>
+              </li>
+            </ul>
+          </div>
+        </td>
       </tr>
     {% endfor %}
   </tbody>
 </table>
+<div class="modal fade" id="editModal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-labelledby="editModalTitle" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h1 class="modal-title fs-5" id="editModalTitle"></h1>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <form action="{{url_for('settings.point_policy')}}" method="post" id="editPointValueForm">
+          <label for="point-value">Point Value</label>
+          <input type="number" id="point-value" name="point-value" min="0">
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+        <button type="submit" id="editModalSave" class="btn btn-primary" form="editPointValueForm">Save</button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  let selectedRuleId = null;
+  let selectedRuleName = null;
+  let selectedRuleValue = null;
+
+  const onClickEdit = function (event) {
+    selectedRuleId = event.currentTarget.dataset.ruleId;
+    selectedRuleName = event.currentTarget.dataset.ruleName;
+    selectedRuleValue = event.currentTarget.dataset.ruleValue;
+    document.getElementById('editModalTitle').innerText = selectedRuleName;
+    document.getElementById('point-value').value = selectedRuleValue;
+    const form = document.getElementById('editPointValueForm');
+    form.action = form.action + '/rules/' + selectedRuleId;
+  }
+  const editButtons = document.getElementsByClassName('edit-btn');
+  for (const button of editButtons) {
+    button.addEventListener('click', onClickEdit);
+  }
+</script>
 {% endblock %}
