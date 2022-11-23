@@ -1,6 +1,6 @@
 import pandas as pd
 import traceback
-from flask import Blueprint, render_template, request, redirect, url_for, flash
+from flask import Blueprint, render_template, request, redirect, url_for, flash, Response
 from werkzeug.utils import secure_filename
 from datetime import datetime
 
@@ -190,6 +190,18 @@ def update(id, year):
         exceptions=exceptions,
         roles_status=roles_status
     )
+
+@faculty.route('/<int:id>/deactivate/<int:year>', methods=['POST'])
+@login_required
+def deactivate(id, year):
+    try:
+        print('OK', id, year)
+        deactivate_faculty_status(id, year)
+        flash('Deactivate successfully!', 'success')
+        return Response(status=200)
+    except:
+        flash('Failed to deactivate.', 'error')
+        return Response(status=400)
 
 def process_user_file(file_path, sheet__index, sheet__index_name):
     error = None
@@ -520,12 +532,32 @@ def update_active_faculty_status(user_id, start_year, cur_year, role):
     db.commit()
     return
 
-def update_faculty_credit_due_grad_count(user_id, year,credit_due, grad_count, grad_students):
+def update_faculty_credit_due_grad_count(user_id, year, credit_due, grad_count, grad_students):
     db = get_db()
     db.execute(
         'UPDATE faculty_point_info SET credit_due = ?, grad_count = ?, grad_students = ?'
         ' WHERE user_id = ? AND year = ?',
         (credit_due, grad_count, grad_students, user_id, year)
+    )
+    db.commit()
+    return
+
+def deactivate_faculty_status(user_id, year):
+    profile_status = get_user_yearly_status(user_id, year)
+    start_year = profile_status['start_year']
+    role = profile_status['role']
+
+    cur_year = datetime.now().year
+    db = get_db()
+    db.execute(
+        'UPDATE faculty_status SET end_year = ?'
+        ' WHERE user_id = ? AND start_year = ?',
+        (cur_year, user_id, start_year)
+    )
+    db.execute(
+        'INSERT INTO faculty_status (user_id, start_year, active_status, role)'
+        ' VALUES (?, ?, ?, ?)',
+        (user_id, cur_year, 0, role)
     )
     db.commit()
     return
