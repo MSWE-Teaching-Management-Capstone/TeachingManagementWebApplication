@@ -1,4 +1,4 @@
-from flask import (Blueprint, render_template, redirect, url_for, session)
+from flask import (Blueprint, render_template, redirect, url_for, request)
 from datetime import datetime
 import datetime as dt
 
@@ -26,6 +26,41 @@ def get_general_logs():
     return render_template('logs/general_logs.html', general_logs=get_admin_general_logs())
 
 
+@logs.route('/exception-with-dates', methods=['POST'])
+@login_required
+def get_admin_exceptions_with_daterange():
+    admin_exceptions_with_dates = []
+
+    if request.method == 'POST':
+        start_date = request.form['start-date']
+        end_date = request.form['end-date']
+
+        db = get_db()
+
+        raw = db.execute(
+            'SELECT logs.created, logs.owner, users.user_name, exceptions.exception_category, exceptions.message'
+            ' FROM logs'
+            ' JOIN users ON users.user_id = logs.user_id'
+            ' JOIN exceptions ON logs.exception_id = exceptions.exception_id'
+            ' WHERE logs.exception_id IS NOT NULL AND logs.user_id IS NOT NULL'
+            ' AND logs.created < ? AND logs.created > ?',
+            (end_date, start_date),
+        ).fetchall()
+
+        for record in raw:
+            admin_exceptions_with_dates.append(
+                {
+                    'timeStamp': convert_local_timezone(record['created']),
+                    'owner': record['owner'],
+                    'affected': record['user_name'],
+                    'exception': record['exception_category'],
+                    'reason': record['message']
+                }
+            )
+
+    return render_template('logs/index.html', exception_logs=admin_exceptions_with_dates)
+
+
 def get_admin_exception_logs():
     admin_exceptions = []
     db = get_db()
@@ -35,7 +70,7 @@ def get_admin_exception_logs():
         ' FROM logs'
         ' JOIN users ON users.user_id = logs.user_id'
         ' JOIN exceptions ON logs.exception_id = exceptions.exception_id'
-        ' WHERE logs.exception_id IS NOT NULL AND logs.user_id IS NOT NULL',
+        ' WHERE logs.exception_id IS NOT NULL AND logs.user_id IS NOT NULL'
     ).fetchall()
 
     for record in raw:
@@ -99,25 +134,3 @@ def get_username_from_id(user_id):
 
 def convert_local_timezone(utc_timestamp):
     return utc_timestamp.replace(tzinfo=dt.timezone.utc).astimezone(tz=None).strftime('%m/%d/%Y %H:%M:%S')
-
-
-def insert_general_log(owner, user_id: None, log_category):
-    db = get_db()
-    db.execute(
-        'INSERT INTO logs (owner, user_id, exception_id, log_category)'
-        ' VALUES (?, ?, ?, ?)',
-        (owner, user_id, None, log_category)
-    )
-    db.commit()
-    return
-
-
-def insert_exception_log(owner, user_id, exception_id):
-    db = get_db()
-    db.execute(
-        'INSERT INTO logs (owner, user_id, exception_id)'
-        ' VALUES (?, ?, ?)',
-        (owner, user_id, exception_id)
-    )
-    db.commit()
-    return
