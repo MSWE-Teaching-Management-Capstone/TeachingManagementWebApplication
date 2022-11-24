@@ -51,7 +51,7 @@ def calculate_teaching_point_val(course_title_id, num_of_enrollment, offload_or_
                 'SELECT user_ucinetid FROM users'
                 ' WHERE user_id = ?', (user_id,)
             ).fetchone()[0]
-            warning_msg = f"User {ucinetid} teaches offload with a negative point balance."
+            warning_msg = f"Warning: User {ucinetid} teaches offload with a negative point balance."
             flash(warning_msg, 'warning')
         return 0
     # rules #2
@@ -215,7 +215,11 @@ def get_previous_year_point_balance(year, quarter, user_id):
         academic_year = year-1
 
     db = get_db()
-    return db.execute(
+    previous_balance = db.execute(
         'SELECT previous_balance FROM faculty_point_info'
         ' WHERE user_id = ? AND year = ?', (user_id, academic_year)
-    ).fetchone()['previous_balance']
+    ).fetchone()
+    if previous_balance is None:
+        return 0
+    else:
+        return previous_balance['previous_balance']

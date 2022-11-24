@@ -219,7 +219,7 @@ def is_valid_input(year, quarter, user_UCINetID_list, course_title_id, course_se
             'SELECT * FROM users WHERE user_ucinetid = ?', (ucinetid,)
         ).fetchone()
         if user is None:
-            err_msg = f"User {ucinetid} not exists in the system. Operation failed."
+            err_msg = f"Operation failed: User {ucinetid} not exists in the system."
             flash(err_msg, 'error')
             return False
 
@@ -228,7 +228,7 @@ def is_valid_input(year, quarter, user_UCINetID_list, course_title_id, course_se
         'SELECT * FROM courses WHERE course_title_id = ?', (course_title_id,)
     ).fetchone()
     if course is None:
-        err_msg = f"Course {course_title_id} not exists in the system. Operation failed."
+        err_msg = f"Operation failed: Course {course_title_id} not exists in the system."
         flash(err_msg, 'error')
         return False
     
@@ -259,7 +259,7 @@ def is_valid_input(year, quarter, user_UCINetID_list, course_title_id, course_se
     else:        
         return True
     
-    err_msg = f"Incorrect data format on {col_name} column. Operation failed."
+    err_msg = f"Operation failed: Incorrect data format on {col_name} column."
     flash(err_msg, 'error')
     return False
 
@@ -294,7 +294,7 @@ def update_scheduled_teaching(num_of_enrollment, offload_or_recall_flag, teachin
 def get_ucinetid():
     ucinetids = []
     db = get_db()
-    rows = db.execute('SELECT DISTINCT user_ucinetid FROM users').fetchall()
+    rows = db.execute('SELECT DISTINCT user_ucinetid FROM users ORDER BY user_ucinetid ASC').fetchall()
     for row in rows:
         ucinetids.append(row["user_ucinetid"])
     return ucinetids
