@@ -11,7 +11,7 @@ from management_app.views.points import calculate_yearly_ending_balance, get_fac
 
 faculty = Blueprint('faculty', __name__, url_prefix='/faculty')
 
-@faculty.route('/', methods=['GET'])
+@faculty.route('/points', methods=['GET'])
 @login_required
 def index():
     if request.method == 'GET':
@@ -24,6 +24,12 @@ def index():
             faculties = get_professor_point_info(year)
         return render_template('faculty/index.html', faculties=faculties, year_options=year_options)
 
+@faculty.route('/members', methods=['GET'])
+@login_required
+def members():
+    members = get_faculty_members()
+    return render_template('faculty/members.html', members=members)
+
 @faculty.route('/data-templates/<filename>', methods=['GET'])
 @login_required
 def download_template(filename):
@@ -31,28 +37,27 @@ def download_template(filename):
         # TODO: pre-populate data for the 2nd download
         return download_file(filename)
 
-@faculty.route('/upload', methods=['POST'])
+@faculty.route('/upload/<template>', methods=['POST'])
 @login_required
-def upload():
+def upload(template):
     if request.method == 'POST':
         file = request.files['facultyTemplate']
         filename = secure_filename(file.filename)
         file_path = get_upload_filepath(filename)
-        action_type = request.form['templateUploadOptions']
 
         upload_file(file)
 
-        if action_type == 'addUsers':
+        if template == 'addUsers':
             process_user_file(file_path, 1, 'Users')
-        elif action_type == 'addProfessors':
+        elif template == 'addProfessors':
             process_professors_point_file(file_path, 1, 'Professors_point_info')
 
         remove_upload_file(file)
         return redirect(url_for('faculty.index'))
 
-@faculty.route('/create', methods=['GET', 'POST'])
+@faculty.route('/create-member', methods=['GET', 'POST'])
 @login_required
-def create():
+def create_member():
     role_options = get_faculty_roles_credit_due()
 
     if request.method == 'POST':
@@ -98,10 +103,10 @@ def create():
                 flash('Add faculty member successfully! You can upload faculty point for new academic year data.', 'success')
             else:
                 flash(error, 'error')
-        return redirect(url_for('faculty.create', role_options=role_options))
+        return redirect(url_for('faculty.create_member', role_options=role_options))
 
     if request.method == 'GET':
-        return render_template('faculty/create.html', role_options=role_options)
+        return render_template('faculty/create-member.html', role_options=role_options)
 
 @faculty.route('/<int:id>/update/<int:year>', methods=['GET', 'POST'])
 @login_required
@@ -396,6 +401,26 @@ def get_professor_point_info(year):
                 'profile_status': profile_status # { start_year, end_year, active_status, role }
             })
     return faculties
+
+def get_faculty_members():
+    members = []
+    db = get_db()
+    rows = db.execute(
+        'SELECT u.user_id, u.user_name, u.user_email, u.user_ucinetid, f.role, f.active_status'
+        ' FROM users AS u'
+        ' LEFT JOIN faculty_status AS f ON u.user_id = f.user_id'
+        " WHERE f.end_year IS NULL AND f.role != 'staff'"
+    ).fetchall()
+    for row in rows:
+        members.append({
+            'id': row['user_id'],
+            'name': row['user_name'],
+            'email': row['user_email'],
+            'net_id': row['user_ucinetid'],
+            'cur_role': row['role'],
+            'cur_status': row['active_status']
+        })
+    return members
 
 def get_faculty_yearly_edit_info(user_id, year):
     faculty = {}

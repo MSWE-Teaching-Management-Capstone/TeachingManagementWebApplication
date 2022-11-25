@@ -1,7 +1,27 @@
 {% extends 'base.html' %}
 
 {% block title %}Faculty{% endblock %}
-{% block header %}Faculty{% endblock %}
+{% block header %}Faculty Points{% endblock %}
+
+{% block header_content %}
+  <nav class="navbar navbar-expand-sm bg-light">
+    <div class="container-fluid">
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      <div class="collapse navbar-collapse" id="navbarNav">
+        <ul class="navbar-nav">
+          <li class="nav-item">
+            <a class="nav-link active" aria-current="page" href="/faculty/points">Points</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="/faculty/members">Members</a>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </nav>
+{% endblock %}
 
 {% block content %}
 <div class="row">
@@ -30,20 +50,12 @@
           <i class="fa-solid fa-download"></i>
           Import Changes
         </button>
-        <div class="dropdown" style="margin-left: 20px;">
-          <button class="btn btn-secondary fw-bold" type="button" data-bs-toggle="dropdown" aria-expanded="false">
-            ⋮
-          </button>
-          <ul class="dropdown-menu">
-            <li><a class="dropdown-item" href="{{ url_for('faculty.create') }}"><i class="fa-solid fa-plus"></i> Add Faculty Member</a></li>
-          </ul>
-        </div>
       </div>
     </div>
   </div>
 </div>
 
-<table class="table align-middle table-hover">
+<table class="table align-middle">
   <thead>
     <tr>
       <th scope="col">Name</th>
@@ -72,11 +84,6 @@
         <td>{{ faculty['required_point'] }}</td>
         <td>{{ faculty['prev_balance'] }}</td>
         <td>{{ faculty['ending_balance'] }}</td>
-        <!-- {% if faculty['profile_status'] and faculty['profile_status']['active_status'] == 0 %}
-        <td>0 (inactive)</td>
-        {% else %}
-        <td>{{ faculty['ending_balance'] }}</td>
-        {% endif %} -->
         <td>
           <div class="dropdown">
             <button class="btn btn-secondary fw-bold" type="button" data-bs-toggle="dropdown" aria-expanded="false">
@@ -85,9 +92,6 @@
             <ul class="dropdown-menu">
               <li>
                 <a class="dropdown-item" href="{{ url_for('faculty.update', id=faculty['user_id'], year=faculty['academic_year']) }}"><i class="fa-solid fa-pen-to-square"></i> Edit</a>
-              </li>
-              <li data-bs-toggle="modal" data-bs-target="#deactivateFaculty" data-userid="{{ faculty['user_id'] }}" data-year="{{ faculty['academic_year'] }}" data-name="{{ faculty['name'] }}" onclick="handleDeactivateSelection(this)">
-                <a class="dropdown-item"><i class="fa-solid fa-ban"></i> Deactivate</a>
               </li>
             </ul>
           </div>
@@ -100,22 +104,12 @@
 <div class="modal fade" id="importChange" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-labelledby="importChangeLabel" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content">
-      <form method="POST" action="{{ url_for('faculty.upload') }}" enctype="multipart/form-data">
+      <form method="POST" action="{{ url_for('faculty.upload', template='addProfessors') }}" enctype="multipart/form-data">
         <div class="modal-header">
-          <h1 class="modal-title fs-5" id="importChangeLabel">Add and/or edit faculty using the import template and upload it here.</h1>
+          <h1 class="modal-title fs-5" id="importChangeLabel">Add faculty points info using the import template</h1>
           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
         <div class="modal-body">
-          <div class="row" style="margin: 10px 0;">
-            <div class="col">
-              <a href="{{ url_for('faculty.download_template', filename='users.xlsx') }}">
-                <button type="button" class="btn btn-primary">
-                  <i class="fa-solid fa-download"></i>
-                  Download Users Data Template
-                </button>
-              </a>
-            </div>
-          </div>
           <div class="row" style="margin: 10px 0;">
             <div class="col">
               <a href="{{ url_for('faculty.download_template', filename='professors_point_info.xlsx') }}">
@@ -129,30 +123,10 @@
           <div class="row" style="margin-top: 40px;">
             <div class="col">
               <div class="input-group mb-3">
-                <p>Upload users template OR professor point info template</p>
+                <p>Upload professor point info template</p>
                 <div>
                   <input type="file" name="facultyTemplate" class="form-control" id="uploadFacultyTemplate">
                 </div>
-              </div>
-            </div>
-          </div>
-          <div class="row">
-            <div class="col">
-              <div class="form-check">
-                <input class="form-check-input" type="radio" name="templateUploadOptions" id="addUsersTemplate" value="addUsers">
-                <label class="form-check-label" for="addUsersTemplate">
-                  Create Users by Template
-                </label>
-              </div>
-            </div>
-          </div>
-          <div class="row">
-            <div class="col">
-              <div class="form-check">
-                <input class="form-check-input" type="radio" name="templateUploadOptions" id="addProfessorPointTemplate" value="addProfessors">
-                <label class="form-check-label" for="addProfessorPointTemplate">
-                  Create Professors Point Info by Template
-                </label>
               </div>
             </div>
           </div>
@@ -187,17 +161,9 @@
 <script>
   const templateUploadInput = document.getElementById("uploadFacultyTemplate");
   const templateSubmitButton = document.getElementById("submitFacultyTemplate");
-  const templateRadioInput = document.getElementsByName('templateUploadOptions');
   let templateRadioOption = null, fileInput = null;
   let deactivateUserId = null;
   let academicYear = null;
-
-  for (let i = 0; i < templateRadioInput.length; i++) {
-    templateRadioInput[i].addEventListener('click', function(event) {
-      templateRadioOption = event.target.id;
-      checkTemplateSubmit()
-    });
-  }
 
   templateUploadInput.onchange = function() {
     fileInput = this.files[0];
@@ -205,7 +171,7 @@
   }
 
   function checkTemplateSubmit() {
-    if (fileInput && templateRadioOption) {
+    if (fileInput) {
       templateSubmitButton.disabled = false;
     }
   }
