@@ -1,51 +1,77 @@
-import pytest
-from flask import template_rendered
+from management_app.db import get_db
+from tests.conftest import captured_templates
 
-from management_app import create_app
-
-@pytest.fixture
-def app():
-    app = create_app({
-        'TESTING': True,
-    })
-    yield app
-
-@pytest.fixture
-def client(app):
-    return app.test_client()
-
-def mock_login(client):
-  # Enable login auth
-  with client.session_transaction() as session:
-      session['google_id'] = ''
-
-def captured_templates(app, recorded, **extra):
-    def record(sender, template, context):
-        recorded.append((template, context))
-    return template_rendered.connected_to(record, app)
-
-def test_get_admins_template(app, client):
-    mock_login(client)
-    templates = []
-    with captured_templates(app, templates):
+def test_index(app, client, auth):
+    auth.login(email='tpadmin@uci.edu')
+    with captured_templates(app) as templates:
         response = client.get('/settings/admins')
         assert response.status_code == 200
         assert len(templates) == 1
-        template, context = templates[0]
-        assert template.name == 'settings/admins.html'
-        # TODO use data from test database for expected context values
-        assert len(context['admins']) == 3
-        assert context['current_user'] == context['admins'][0]
-        assert len(context['users']) == 3
 
-def test_get_point_policy_template(app, client):
-    mock_login(client)
-    templates = []
-    with captured_templates(app, templates):
+        template, context = templates[0]
+        assert template.name == 'settings/index.html'
+
+        assert len(context['admins']) == 2
+        assert context['admins'][0]['user_name'] == 'Test Professor Admin'
+        assert context['admins'][1]['user_name'] == 'Test Staff'
+
+        assert context['current_user']['user_name'] == 'Test Professor Admin'
+
+        assert len(context['users']) == 1
+        assert context['users'][0]['user_name'] == 'Test Professor'
+
+def test_remove_admin_post(app, client, auth):
+    auth.login()
+    response = client.post('/settings/admins/1')
+    assert response.status_code == 200
+
+    with app.app_context():
+        db = get_db()
+        user = db.execute('SELECT * FROM users WHERE user_id = 1').fetchone()
+        assert user is not None and user['admin'] == 0
+
+def test_remove_admin_delete(app, client, auth):
+    auth.login()
+    response = client.delete('/settings/admins/4')
+    assert response.status_code == 200
+
+    with app.app_context():
+        db = get_db()
+        admin = db.execute('SELECT * FROM users WHERE user_id = 4').fetchone()
+        assert admin is None
+
+def test_remove_admin_last_admin(app, client, auth):
+    auth.login()
+    with app.app_context():
+        db = get_db()
+        db.execute('UPDATE users SET admin = 0 WHERE user_id = 4')
+        db.commit()
+        response = client.post('settings/admins/1')
+        assert response.status_code == 400
+        user = db.execute('SELECT * FROM users WHERE user_id = 1').fetchone()
+        assert user is not None and user['admin'] == 1
+
+def test_point_policy(app, client, auth):
+    auth.login()
+    with captured_templates(app) as templates:
         response = client.get('/settings/point-policy')
         assert response.status_code == 200
         assert len(templates) == 1
+
         template, context = templates[0]
         assert template.name == 'settings/point-policy.html'
-        # TODO use data from test database for expected context values
-        assert len(context['rules']) == 3
+
+        with app.app_context():
+            db = get_db()
+            rules = db.execute('SELECT * FROM rules').fetchall()
+            assert context['rules'] == rules
+
+def test_edit_rule_point_value(app, client, auth):
+    auth.login()
+    response = client.post('/settings/point-policy/rules/1', data={'point-value': '2.5'})
+    assert response.status_code == 302
+
+    with app.app_context():
+        db = get_db()
+        rule = db.execute('SELECT * FROM rules WHERE rule_id = 1').fetchone()
+        assert rule['value'] == 2.5
