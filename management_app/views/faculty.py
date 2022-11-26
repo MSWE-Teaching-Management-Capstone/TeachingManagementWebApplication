@@ -21,13 +21,13 @@ def index():
         else:
             year_select = request.args.get('year') or year_options[len(year_options)-1]
             year = int(year_select.split('-')[0])
-            faculties = get_professor_point_info(year)
+            faculties = get_all_faculty_point_info(year)
         return render_template('faculty/index.html', faculties=faculties, year_options=year_options)
 
 @faculty.route('/members', methods=['GET'])
 @login_required
 def members():
-    members = get_faculty_members()
+    members = get_all_faculty_members()
     return render_template('faculty/members.html', members=members)
 
 @faculty.route('/data-templates/<filename>', methods=['GET'])
@@ -70,11 +70,11 @@ def create_member():
         if not name:
             error = 'Name is required. '
         if not ucinetid:
-            error += 'UCI NetID is required. '
+            error = 'UCI NetID is required. '
         if not email:
-            error += 'Email is required. '
+            error = 'Email is required. '
         if not role:
-            error += 'User Role is required. '
+            error = 'User Role is required. '
 
         if error is not None:
             flash(error, 'error')
@@ -110,27 +110,27 @@ def create_member():
 
 @faculty.route('/<int:id>/update/<int:year>', methods=['GET', 'POST'])
 @login_required
-def update(id, year):
+def update_points(id, year):
     error = None
-    role_options = get_faculty_roles_credit_due()
     exception_options = ['buyout', 'sabbatical', 'leave', 'other']
     faculty = {}
     exceptions = []
-    roles_status = []
 
     try:
-        faculty = get_faculty_yearly_edit_info(id, year)
+        profile = get_user_yearly_status(id, year)
+        faculty = {
+            'academic_year': year,
+            'member': get_faculty_member_info(id),
+            'point': get_faculty_yearly_point_info(id, year),
+            'role': profile['role']
+        }
         exceptions = get_faculty_yearly_exceptions(id, year)
-        roles_status = get_faculty_roles_status(id)
-    except:
+    except Exception as e:
+        print(e)
         error = 'User is not found'
 
     if request.method == 'POST':
         try:
-            name = request.form['name']
-            ucinetid = request.form['ucinetid']
-            email = request.form['email']
-            role = request.form['role']
             grad_count = request.form['grad_count']
             grad_students = request.form['grad_students']
 
@@ -153,60 +153,104 @@ def update(id, year):
                         points = float(exception_point) * -1
                     insert_exception(id, year, exception_category, exception_message, points)
 
-            # Update faculty user info
-            update_users(name, email, ucinetid, id)
-
-            # Update faculty profile status and role when changing a new role
-            role_start_year = faculty['profile_status']['start_year']
-            role_end_year = faculty['profile_status']['end_year']
-            cur_role = faculty['profile_status']['role']
-            cur_year = datetime.now().year
-            credit_due = faculty['credit_due'] # existed credit in faculty_point_info table
-
-            # Note: only allow to update user_role in the latest academic year
-            # Because we use current year to take the role reference
-            # We can then know start_year and end_year for that faculty role
-            if 'role' in request.form and cur_role != role and role_end_year is None:
-                update_active_faculty_status(id, role_start_year, cur_year, role)
-                credit_due = role_options[role]
-
-            # Update credit_due and grad_count, grad_students firstly
-            update_faculty_credit_due_grad_count(id, year, credit_due, grad_count, grad_students)
+            # Update grad_count, grad_students firstly
+            update_faculty_grad_info(id, year, grad_count, grad_students)
 
             # Update total ending_point finally
             update_yearly_ending_balance(id, year)
-        except:
+        except Exception as e:
             error = 'Failed to update. Please refresh and fill the correct info again.'
 
         if error is not None:
             flash(error, 'error')
         else:
             flash('Update successfully!', 'success')
-        return redirect(url_for('faculty.update', id=id, year=year))
+        return redirect(url_for('faculty.update_points', id=id, year=year))
 
     if error is not None:
         flash(error, 'error')
 
     return render_template(
-        'faculty/edit.html',
-        role_options=role_options,
+        'faculty/edit-points.html',
         exception_options=exception_options,
         faculty=faculty,
-        exceptions=exceptions,
-        roles_status=roles_status
+        exceptions=exceptions
     )
 
-@faculty.route('/<int:id>/deactivate/<int:year>', methods=['POST'])
+@faculty.route('/<int:id>/update', methods=['GET', 'POST'])
 @login_required
-def deactivate(id, year):
+def update_member(id):
+    error = None
+    faculty = {}
+    role_options = get_faculty_roles_credit_due()
+    role_history = get_faculty_roles_history(id)
+    cur_year = datetime.now().year
+    cur_profile = get_user_yearly_status(id, cur_year)
+
     try:
-        print('OK', id, year)
-        deactivate_faculty_status(id, year)
-        flash('Deactivate successfully!', 'success')
-        return Response(status=200)
-    except:
-        flash('Failed to deactivate.', 'error')
-        return Response(status=400)
+        faculty = {
+            'member': get_faculty_member_info(id),
+            'role_history': role_history,
+            'cur_role': cur_profile['role'],
+            'cur_status': cur_profile['active_status']
+        }
+    except Exception as e:
+        print(e)
+        error = 'Failed to update. Please refresh and fill the correct info again.'
+    
+    if request.method == 'POST':
+        try:
+            name = request.form['name']
+            ucinetid = request.form['ucinetid']
+            email = request.form['email']
+            role = request.form['role']
+            status = int(request.form['status'])
+
+            if not name:
+                error = 'Name is required. '
+            if not ucinetid:
+                error = 'UCI NetID is required. '
+            if not email:
+                error = 'Email is required. '
+            if not role:
+                error = 'User Role is required. '
+
+            if error is None:
+                # Update faculty user info
+                update_users(name, email, ucinetid, id)
+
+                # Update faculty profile status and role when changing a new role
+                role_start_year = cur_profile['start_year']
+                role_end_year = cur_profile['end_year']
+                cur_role = cur_profile['role']
+                cur_status = cur_profile['active_status']
+                cur_year = datetime.now().year
+                # Note: only allow to update the latest user_role
+                if cur_role != role and role_end_year is None:
+                    # credit_due = role_options[role]
+                    update_faculty_role(id, role_start_year, cur_year, role)
+                    update_yearly_ending_balance(id, role_start_year)
+
+                if cur_status != status and role_end_year is None:
+                    update_faculty_status(id, role_start_year, cur_year, role, status)
+        except Exception as e:
+            print(e)
+            error = 'Failed to update. Please refresh and fill the correct info again.'
+
+        if error is not None:
+            flash(error, 'error')
+        else:
+            flash('Update successfully!', 'success')
+        return redirect(url_for('faculty.update_member', id=id))
+
+    if error is not None:
+        flash(error, 'error')
+
+    return render_template(
+        'faculty/edit-member.html',
+        faculty=faculty,
+        role_options=role_options
+    )
 
 def process_user_file(file_path, sheet__index, sheet__index_name):
     error = None
@@ -246,7 +290,8 @@ def process_user_file(file_path, sheet__index, sheet__index_name):
                         print('INTEGRITY ERROR\n', traceback.print_exc())
                 elif row is not None:
                     error = 'Database insert error. User is already existed. Please refresh and upload correct file with new user data.'
-    except:
+    except Exception as e:
+        print(e)
         error = 'Failed to upload. Please refresh and upload the correct data format again.'
 
     if error is not None:
@@ -304,7 +349,8 @@ def process_professors_point_file(file_path, sheet__index, sheet__index_name):
                     except db.IntegrityError:
                         print('INTEGRITY ERROR\n', traceback.print_exc())
                         error = 'Database insert error. Please refresh and upload correct file with data of a new academic year.'
-    except:
+    except Exception as e:
+        print(e)
         error = 'Failed to upload. Please refresh and upload the correct format with new academic year and active users data again.'
 
     if error is not None:
@@ -373,7 +419,7 @@ def get_yearly_previous_balance(user_id, year):
         return None
     return row['ending_balance']
 
-def get_professor_point_info(year):
+def get_all_faculty_point_info(year):
     faculties = []
     db = get_db()
     data = db.execute(
@@ -402,7 +448,7 @@ def get_professor_point_info(year):
             })
     return faculties
 
-def get_faculty_members():
+def get_all_faculty_members():
     members = []
     db = get_db()
     rows = db.execute(
@@ -422,32 +468,36 @@ def get_faculty_members():
         })
     return members
 
-def get_faculty_yearly_edit_info(user_id, year):
-    faculty = {}
+def get_faculty_member_info(user_id):
+    info = {}
     db = get_db()
     row = db.execute(
-        'SELECT u.user_id, u.user_name, u.user_ucinetid, u.user_email, f.previous_balance, f.ending_balance, f.credit_due, f.grad_count, f.grad_students'
-        ' FROM faculty_point_info AS f'
-        ' JOIN users AS u ON u.user_id = f.user_id'
-        ' WHERE f.user_id = ? AND f.year = ?', (user_id, year)
+        'SELECT * FROM users WHERE user_id = ?', (user_id,)
     ).fetchone()
-    profile_status = get_user_yearly_status(user_id, year)
-
-    if profile_status is not None:
-        faculty = {
-            'user_id': id,
-            'academic_year': year,
+    if row is not None:
+        info = {
             'name': row['user_name'],
-            'ucinetid': row['user_ucinetid'],
             'email': row['user_email'],
+            'ucinetid': row['user_ucinetid']
+        }
+    return info
+
+def get_faculty_yearly_point_info(user_id, year):
+    point = {}
+    db = get_db()
+    row = db.execute(
+        'SELECT * FROM faculty_point_info WHERE user_id = ? AND year = ?',
+        (user_id, year)
+    ).fetchone()
+    if row is not None:
+        point = {
             'previous_balance': row['previous_balance'],
             'ending_balance': row['ending_balance'],
             'credit_due': row['credit_due'],
             'grad_count': row['grad_count'],
-            'grad_students': row['grad_students'],
-            'profile_status': profile_status # { start_year, end_year, active_status, role }
+            'grad_students': row['grad_students']
         }
-    return faculty
+    return point
 
 def get_faculty_yearly_exceptions(user_id, year):
     exceptions = []
@@ -463,20 +513,31 @@ def get_faculty_yearly_exceptions(user_id, year):
         })
     return exceptions
 
-def get_faculty_roles_status(user_id):
+def get_faculty_roles_history(user_id):
     roles_status = []
     db = get_db()
     rows = db.execute(
-        'SELECT * FROM faculty_status WHERE user_id = ?', (user_id,)
+        'SELECT * FROM faculty_status WHERE user_id = ? ORDER BY start_year', (user_id,)
     ).fetchall()
+
+    if rows is None:
+        return roles_status
+
     for row in rows:
-        if row is not None:
-            roles_status.append({
-                'start_year': row['start_year'],
-                'end_year': row['end_year'] or 'Present',
-                'role': row['role'],
-                'active_status': row['active_status']
-            })
+        roles_status.append({
+            'start_year': row['start_year'],
+            'end_year': row['end_year'],
+            'role': row['role'],
+            'active_status': row['active_status']
+        })
+
+        if len(roles_status) > 1:
+            last_profile = roles_status[len(roles_status)-2]
+            last_status = last_profile['active_status']
+            last_role = last_profile['role']
+            if last_status == row['active_status'] and last_role == row['role']:
+                roles_status.pop()
+                roles_status[len(roles_status)-1]['end_year'] = row['end_year']
     return roles_status
 
 def insert_users(user_name, user_email, user_ucinetid, is_admin):
@@ -535,7 +596,7 @@ def update_users(name, email, ucinetid, user_id):
     db.commit()
     return
 
-def update_active_faculty_status(user_id, start_year, cur_year, role):
+def update_faculty_role(user_id, start_year, cur_year, role):
     db = get_db()
     if cur_year == start_year:
         db.execute(
@@ -557,32 +618,34 @@ def update_active_faculty_status(user_id, start_year, cur_year, role):
     db.commit()
     return
 
-def update_faculty_credit_due_grad_count(user_id, year, credit_due, grad_count, grad_students):
+def update_faculty_status(user_id, start_year, cur_year, role, status):
     db = get_db()
-    db.execute(
-        'UPDATE faculty_point_info SET credit_due = ?, grad_count = ?, grad_students = ?'
-        ' WHERE user_id = ? AND year = ?',
-        (credit_due, grad_count, grad_students, user_id, year)
-    )
+    if cur_year == start_year:
+        db.execute(
+            'UPDATE faculty_status SET active_status = ?'
+            ' WHERE user_id = ? AND start_year = ?',
+            (status, user_id, start_year)
+        )
+    else:
+        db.execute(
+            'UPDATE faculty_status SET end_year = ?'
+            ' WHERE user_id = ? AND start_year = ?',
+            (cur_year, user_id, start_year)
+        )
+        db.execute(
+            'INSERT INTO faculty_status (user_id, start_year, active_status, role)'
+            ' VALUES (?, ?, ?, ?)',
+            (user_id, cur_year, status, role)
+        )
     db.commit()
     return
 
-def deactivate_faculty_status(user_id, year):
-    profile_status = get_user_yearly_status(user_id, year)
-    start_year = profile_status['start_year']
-    role = profile_status['role']
-
-    cur_year = datetime.now().year
+def update_faculty_grad_info(user_id, year, grad_count, grad_students):
     db = get_db()
     db.execute(
-        'UPDATE faculty_status SET end_year = ?'
-        ' WHERE user_id = ? AND start_year = ?',
-        (cur_year, user_id, start_year)
-    )
-    db.execute(
-        'INSERT INTO faculty_status (user_id, start_year, active_status, role)'
-        ' VALUES (?, ?, ?, ?)',
-        (user_id, cur_year, 0, role)
+        'UPDATE faculty_point_info SET grad_count = ?, grad_students = ?'
+        ' WHERE user_id = ? AND year = ?',
+        (grad_count, grad_students, user_id, year)
     )
     db.commit()
     return

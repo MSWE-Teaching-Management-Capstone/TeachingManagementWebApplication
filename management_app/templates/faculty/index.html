@@ -91,7 +91,7 @@
             </button>
             <ul class="dropdown-menu">
               <li>
-                <a class="dropdown-item" href="{{ url_for('faculty.update', id=faculty['user_id'], year=faculty['academic_year']) }}"><i class="fa-solid fa-pen-to-square"></i> Edit</a>
+                <a class="dropdown-item" href="{{ url_for('faculty.update_points', id=faculty['user_id'], year=faculty['academic_year']) }}"><i class="fa-solid fa-pen-to-square"></i> Edit</a>
               </li>
             </ul>
           </div>
@@ -129,27 +129,12 @@
                 </div>
               </div>
             </div>
+            <p>If <b>faculty role</b> needs to update, please go to the Faculty Members to update role first before upload the new academic point data.</p>
           </div>
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
           <button type="submit" class="btn btn-primary" id="submitFacultyTemplate" disabled>Import Changes</button>
-        </div>
-      </form>
-    </div>
-  </div>
-</div>
-<div class="modal fade" id="deactivateFaculty" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-labelledby="deactivateFacultyLabel" aria-hidden="true">
-  <div class="modal-dialog modal-dialog-centered">
-    <div class="modal-content">
-      <form method="POST" enctype="multipart/form-data" id="deactivateFacultyForm" onsubmit="handleDeactivateSubmit(event)">
-        <div class="modal-header">
-          <h1 class="modal-title fs-5" id="deactivateFacultyLabel"></h1>
-          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-        </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">No</button>
-          <button type="submit" class="btn btn-primary" id="submitFacultyTemplate">Yes</button>
         </div>
       </form>
     </div>
@@ -161,9 +146,7 @@
 <script>
   const templateUploadInput = document.getElementById("uploadFacultyTemplate");
   const templateSubmitButton = document.getElementById("submitFacultyTemplate");
-  let templateRadioOption = null, fileInput = null;
-  let deactivateUserId = null;
-  let academicYear = null;
+  let fileInput = null;
 
   templateUploadInput.onchange = function() {
     fileInput = this.files[0];
@@ -174,28 +157,6 @@
     if (fileInput) {
       templateSubmitButton.disabled = false;
     }
-  }
-
-  function handleDeactivateSelection(click) {
-    const facultyName = click.dataset.name;
-    document.getElementById('deactivateFacultyLabel').innerHTML = `Are you sure you want to deactivate ${facultyName}?`;
-
-    deactivateUserId = click.dataset.userid;
-    academicYear = click.dataset.year;
-  }
-
-  function handleDeactivateSubmit(e) {
-    e.preventDefault();
-
-    fetch(`/faculty/${deactivateUserId}/deactivate/${academicYear}`, {
-      method: 'POST'
-    }).then((response) => {
-      if (response.status == 200) {
-        window.location.replace('/faculty');
-      }
-    }).catch((error) => {
-        console.log('error', error);
-    });
   }
 </script>
 {% endblock scripts %}

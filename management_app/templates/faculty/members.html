@@ -64,11 +64,8 @@
           </button>
           <ul class="dropdown-menu">
             <li>
-              <a class="dropdown-item" href="#"><i class="fa-solid fa-pen-to-square"></i> Edit</a>
+              <a class="dropdown-item" href="{{ url_for('faculty.update_member', id=m['id']) }}"><i class="fa-solid fa-pen-to-square"></i> Edit</a>
             </li>
-            <!-- <li data-bs-toggle="modal" data-bs-target="#deactivateFaculty" data-userid="{{ m['user_id'] }}" data-name="{{ m['name'] }}" onclick="handleDeactivateSelection(this)">
-              <a class="dropdown-item"><i class="fa-solid fa-ban"></i> Deactivate</a>
-            </li> -->
           </ul>
         </div>
       </td>
@@ -122,9 +119,7 @@
 <script>
   const templateUploadInput = document.getElementById("uploadFacultyTemplate");
   const templateSubmitButton = document.getElementById("submitFacultyTemplate");
-  let templateRadioOption = null, fileInput = null;
-  let deactivateUserId = null;
-  let academicYear = null;
+  let fileInput = null;
 
   templateUploadInput.onchange = function() {
     fileInput = this.files[0];
