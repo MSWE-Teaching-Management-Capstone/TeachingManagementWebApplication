@@ -111,25 +111,19 @@ def get_faculty_roles_credit_due():
                 faculty_roles[key] = row['value']
     return faculty_roles
 
-def get_yearly_teaching_points(user_id, year):
+def get_yearly_teaching_points(user_id, start_year):
     # Note: year comes from faculty_point_info table, it represents the start of an an academic year
     # This year should convert to the range of academic year
     # e.g., year 2020 should be 2020-2021 (including 2020 Fall(1) - 2021 Winter(2) & Spring(3))
-    year_range_start = year
-    year_range_end = year + 1
-    yearly_teaching_points = 0
+    end_year = start_year + 1
     db = get_db()
-    rows = db.execute(
-        'SELECT st.teaching_point_val'
-        ' FROM scheduled_teaching AS st'
-        ' JOIN users ON users.user_id = st.user_id'
-        ' WHERE st.user_id = ? AND ((st.year = ? AND st.quarter = 1) OR (st.year = ? AND st.quarter = 2) OR (st.year = ? AND st.quarter = 3))',
-        (user_id, year_range_start, year_range_end, year_range_end)
-    ).fetchall()
+    res = db.execute("""
+        SELECT SUM(teaching_point_val) AS total
+        FROM scheduled_teaching
+        WHERE user_id = ? AND ((year = ? AND quarter = 1) OR (year = ? AND quarter = 2) OR (year = ? AND quarter = 3))
+    """, (user_id, start_year, end_year, end_year)).fetchone()
 
-    for row in rows:
-        yearly_teaching_points += row['teaching_point_val']
-    return yearly_teaching_points
+    return res['total']
 
 def get_grad_mentoring_points(grad_count):
     # TODO/Note: point per grad student and extra points are temporarily hard-coded
