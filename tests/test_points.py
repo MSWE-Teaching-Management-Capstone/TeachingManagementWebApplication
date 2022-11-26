@@ -1,21 +1,20 @@
-import pytest
-
 from management_app.db import get_db
 from management_app.views.points import calculate_teaching_point_val, get_faculty_roles_credit_due, calculate_yearly_ending_balance
 
-@pytest.mark.parametrize(('course_title_id', 'num_of_enrollment', 'offload_or_recall_flag', 'year', 'quarter', 'user_id', 'num_of_co_taught', 'expected_value'), (
-    ('ICS51', 250, 0, 2022, 1, 1, 1, 1.5),
-    ('ICS193', 7, 0, 2022, 1, 1, 1, 0),
-    ('ICS53', 150, 0, 2022, 2, 1, 1, 1),
-    ('ICS193', 6, 0, 2022, 2, 1, 1, 0),
-    ('ICS53', 150, 0, 2022, 3, 1, 1, 1),
-    ('ICS193', 5, 0, 2022, 3, 1, 1, 0),
-    ('ICS80', 50, 0, 2022, 1, 2, 1, 0.25),
-    ('CS234', 100, 0, 2022, 3, 2, 1, 1.25)
-))
-def test_calculate_teaching_point_val(app, course_title_id, num_of_enrollment, offload_or_recall_flag, year, quarter, user_id, num_of_co_taught, expected_value):
+def test_calculate_teaching_point_val(app):
     with app.app_context():
-        assert calculate_teaching_point_val(course_title_id, num_of_enrollment, offload_or_recall_flag, year, quarter, user_id, num_of_co_taught) == expected_value
+        db = get_db()
+        res = db.execute('SELECT user_id, year, quarter, course_title_id, enrollment, offload_or_recall_flag, teaching_point_val FROM scheduled_teaching').fetchall()
+        for offering in res:
+            assert calculate_teaching_point_val(
+                offering['course_title_id'],
+                offering['enrollment'],
+                offering['offload_or_recall_flag'],
+                offering['year'],
+                offering['quarter'],
+                offering['user_id'],
+                1
+            ) == offering['teaching_point_val']
 
 def test_get_faculty_roles_credit_due(app):
     expected = {
