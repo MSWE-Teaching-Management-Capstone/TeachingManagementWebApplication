@@ -101,6 +101,6 @@ def login_callback():
 def redirect_to_homepage():
     # We currently use faculty page as home page for admins after signing in
     if session['is_admin']:
-        return redirect('/faculty')
+        return redirect('/faculty/points')
     else:
         return redirect('/faculty')  # TODO: Redirect to regular user homepage
