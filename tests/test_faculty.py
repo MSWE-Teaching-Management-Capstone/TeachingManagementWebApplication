@@ -1,6 +1,6 @@
 def test_request_get_faculty_response(client, auth):
   auth.login()
-  response = client.get('/faculty/')
+  response = client.get('/faculty/points')
   assert response.status_code == 200
 
 def test_download_correct_file(client, auth):

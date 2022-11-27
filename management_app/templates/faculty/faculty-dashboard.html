@@ -1,0 +1,87 @@
+{% extends 'base.html' %}
+
+{% block title %}Faculty{% endblock %}
+{% block header %}Hi {{ g.user['user_name'] }}{% endblock %}
+
+{% block content %}
+<div class="col-3 mb-3">
+  <form class="d-flex">
+    <label class="align-self-center" for="year">Year:&nbsp;</label>
+    <select class="form-select align-self-center" id="year" aria-label="Year Select" name="year">
+      {% for option in year_options %}
+      <option
+        value="{{ option }}" {% if request.args.get('year') == option or request.args.get('year') == None %} selected="selected"{% endif %}>
+        {{ option }}
+      </option>
+      {% endfor %}
+    </select>&nbsp;
+    <button type="submit" class="btn btn-outline-primary" id="submitFilterByYear">Filter</button>
+   </form>
+</div>
+
+<div style="font-size: 18px;">
+  {% if point_info %}
+  <h5><b>Previous year ending balance:</b> {{ point_info['previous_balance'] }}</h5>
+  <h5><b>Ending balance:</b> {{ point_info['ending_balance'] }}</h5>
+
+  <ul class="mb-3">
+    <li>Current credit due: {{ point_info['credit_due'] }}</li>
+    <li>Teaching points: {{ point_info['teaching_point'] }}</li>
+    <li>Grad points: {{ point_info['grad_point'] }}
+      <ul>
+        <li>Grad Count: {{ point_info['grad_count'] }}</li>
+        {% if point_info['grad_students']|length > 0 %}
+        <li>Grad Students: {{ point_info['grad_students'] }}</li>
+        {% endif %}
+      </ul>
+    </li>
+    <li>Exception points: {{ point_info['exception_point'] }}
+      {% if exceptions|length > 0 %}
+      <ul>
+      {% for e in exceptions %}
+        <li>{{ e['exception_category'] }}: {{ e['points'] }} points {% if e['message'] %}(Reason: {{ e['message'] }}){% endif %}</li>
+      {% endfor %}
+      </ul>
+      {% else %}
+      0
+      {% endif %}
+    </li>
+  </ul>
+
+  <!-- Display course offerings per year table-->
+  {% if offerings|length > 0 %}
+  <table class="table align-middle">
+    <thead>
+      <tr>
+        <th scope="col">Title ID</th>
+        <th scope="col">Section</th>
+        <th scope="col">Course</th>
+        <th scope="col">Units</th>
+        <th scope="col">Level</th>
+        <th scope="col">Enrollment</th>
+        <th scope="col">Offload/Overfload</th>
+        <th scope="col">Teaching points</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for offering in offerings %}
+      <tr>
+        <th scope="row">{{ offering['course_title_id'] }}</th>
+        <td>{{ offering['course_sec'] }}</td>
+        <td>{{ offering['course_title'] }}</td>
+        <td>{{ offering['units'] }}</td>
+        <td>{{ offering['course_level'] }}</td>
+        <td>{{ offering['enrollment'] }}</td>
+        <td>{% if offering['offload_or_recall_flag'] %} Yes {% else %} {% endif %}</td>
+        <td>{{ offering['teaching_point_val'] }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+
+  {% else %}
+  <p>Sorry, no point information in the system.</p>
+  {% endif %}
+</div>
+{% endblock %}

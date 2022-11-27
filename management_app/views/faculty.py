@@ -1,15 +1,62 @@
 import pandas as pd
 import traceback
-from flask import Blueprint, render_template, request, redirect, url_for, flash, Response
+from flask import Blueprint, render_template, request, redirect, url_for, flash, g
 from werkzeug.utils import secure_filename
 from datetime import datetime
 
 from management_app.db import get_db
 from management_app.views.auth import login_required
 from management_app.views.utils import download_file, upload_file, remove_upload_file, get_upload_filepath
-from management_app.views.points import calculate_yearly_ending_balance, get_faculty_roles_credit_due, update_yearly_ending_balance
+from management_app.views.points import calculate_yearly_ending_balance, get_faculty_roles_credit_due, update_yearly_ending_balance, get_yearly_teaching_points, get_grad_mentoring_points, get_yearly_exception_points
 
 faculty = Blueprint('faculty', __name__, url_prefix='/faculty')
+
+# Regular faculty user login URL endpoint
+@faculty.route('/', methods=['GET'])
+@login_required
+def faculty_index():
+    year_options = get_professor_point_year_ranges()
+    year_select = request.args.get('year') or year_options[len(year_options)-1]
+    user_id = g.user['user_id']
+
+    if len(year_options) > 0:
+        year = int(year_select.split('-')[0])
+        db = get_db()
+
+        points = db.execute(
+            'SELECT * from faculty_point_info WHERE user_id = ? AND year = ?', (user_id, year)
+        ).fetchone()
+
+        if points is not None:
+            offerings = []
+            rows = db.execute(
+                ' SELECT * FROM scheduled_teaching AS st'
+                ' INNER JOIN courses AS c'
+                ' ON st.course_title_id = c.course_title_id'
+                ' WHERE user_id = ? AND ((year = ? AND quarter = 1) OR (year = ? AND quarter = 2) OR (year = ? AND quarter = 3))',
+                (user_id, year, year+1, year+1)
+            ).fetchall()
+
+            for row in rows:
+                offerings.append(row)
+
+            point_info = {
+                **points,
+                'teaching_point': get_yearly_teaching_points(user_id, year),
+                'grad_point': get_grad_mentoring_points(points['grad_count']),
+                'exception_point': get_yearly_exception_points(user_id, year)
+            }
+        else:
+            point_info = {}
+            offerings = []
+        exceptions = get_faculty_yearly_exceptions(user_id, year)
+    return render_template(
+        'faculty/faculty-dashboard.html',
+        year_options=year_options,
+        point_info=point_info,
+        exceptions=exceptions,
+        offerings=offerings
+    )
 
 @faculty.route('/points', methods=['GET'])
 @login_required
