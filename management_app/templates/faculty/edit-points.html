@@ -1,0 +1,88 @@
+{% extends 'base.html' %}
+
+{% block title %}Edit Faculty Points{% endblock %}
+{% block header %}Edit Faculty Points{% endblock %}
+
+{% block content %}
+{% set year = faculty['academic_year'] %}
+{% set member = faculty['member'] if faculty['member'] is not none %}
+{% set point = faculty['point'] if faculty['point'] is not none %}
+<div>
+  <h4>Year: {{ year }}-{{ year+1 }}</h4>
+  <ul>
+    <li>Previous Year Teaching Point Balance: <b>{{ point['previous_balance'] }}</b></li>
+    <li>Current Ending Year Teaching Point Balance: <b>{{ point['ending_balance'] }}</b></li>
+  </ul>
+</div>
+<form method="POST" enctype="multipart/form-data" class="col-lg-6 col-sm-12" style="padding-bottom: 60px;">
+  <div class="mb-3">
+    <label class="fw-bold" for="name">Name: </label> {{ member['name'] }}
+  </div>
+  <div class="mb-3">
+    <label class="fw-bold" for="ucinetid">UCI NetID:</label> {{ member['ucinetid'] }}
+  </div>
+  <div class="mb-3">
+    <label class="fw-bold" for="email">Email address:</label> {{ member['email'] }}
+  </div>
+  <div class="mb-3">
+    <label class="fw-bold" for="email">Role:</label> {{ faculty['role'] }}
+  </div>
+  <div class="mb-3">
+    <label class="fw-bold" for="grad_count">Grad Count*</label>
+    <input name="grad_count" type="text" class="form-control" id="grad_count" placeholder="3.33" value="{{ request.form['grad_count'] or point['grad_count']  }}" required>
+    <p>If no grad count, please type 0.0.</p>
+  </div>
+  <div class="mb-3">
+    <label class="fw-bold" for="grad_students">Grad Students</label>
+    <input name="grad_students" type="text" class="form-control" id="grad_students" placeholder="Johnny Wang, John Smith" value="{{ request.form['grad_students'] or point['grad_students'] }}">
+    <p>Please use comma to separate students' name.</p>
+  </div>
+  <div class="mb-3">
+    <label class="fw-bold" for="exception_point">Exception Point</label>
+    <div class="form-check">
+      <input class="form-check-input" type="radio" name="exception_adjust" id="exception_add" value="exception_add">
+      <label class="form-check-label" for="exception_add">
+        Add/Point credit
+      </label>
+    </div>
+    <div class="form-check">
+      <input class="form-check-input" type="radio" name="exception_adjust" id="exception_subtract" value="exception_subtract">
+      <label class="form-check-label" for="exception_subtract">
+        Subtract/Point correction
+      </label>
+    </div>
+    <input name="exception_point" type="text" class="form-control" id="exception_point" placeholder="3.33" value="{{ request.form['exception_point'] }}">
+  </div>
+  <div class="mb-3">
+    <label class="fw-bold" class="align-self-center" for="exception_category" style="width: 160px;">Exception Category&nbsp;</label>
+    <select class="form-select align-self-center" id="exception_category" aria-label="Exception Category" name="exception_category">
+      <option>None</option>
+      {% for option in exception_options %}
+      <option value="{{ option }}" id="exception_option">
+        {{ option }}
+      </option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="mb-3">
+    <label class="fw-bold" for="exception_message">Reason for Exception</label>
+    <input name="exception_message" type="text" class="form-control" id="exception_message" value="{{ request.form['exception_message'] }}">
+  </div>
+
+  {% if exceptions|length > 0 %}
+  <div class="mb-3">
+    <span class="fw-bold">Current Exceptions</span>
+    <ul>
+    {% for e in exceptions %}
+      <li>{{ e['exception_category'] }}: {{ e['points'] }} points {% if e['message'] %}({{ e['message'] }}){% endif %}</li>
+    {% endfor %}
+    </ul>
+  </div>
+  {% endif %}
+
+  <button type="button" class="btn btn-secondary">
+    <a href="{{ url_for('faculty.index') }}" style="text-decoration: none; color: white;">Cancel</a>
+  </button>
+  <button type="submit" class="btn btn-primary" id="addFacultyMember">Save</button>
+</form>
+{% endblock %}

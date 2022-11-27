@@ -1,0 +1,78 @@
+{% extends 'base.html' %}
+
+{% block title %}Edit Faculty Member{% endblock %}
+{% block header %}Edit Faculty Member{% endblock %}
+
+{% block content %}
+{% set member = faculty['member'] if faculty['member'] is not none %}
+<form method="POST" enctype="multipart/form-data" class="col-lg-6 col-sm-12" style="padding-bottom: 60px;">
+  <div class="mb-3">
+    <label class="fw-bold" for="name">Name*</label>
+    <input name="name" type="text" class="form-control" id="name" placeholder="Anteater Smit" value="{{ request.form['name'] or member['name'] }}" required>
+  </div>
+  <div class="mb-3">
+    <label class="fw-bold" for="ucinetid">UCI NetID*</label>
+    <input name="ucinetid" type="text" class="form-control" id="ucinetid" placeholder="anteater1" value="{{ request.form['ucinetid'] or member['ucinetid'] }}" required>
+  </div>
+  <div class="mb-3">
+    <label class="fw-bold" for="email">Email address*</label>
+    <input name="email" type="email" class="form-control" id="email" placeholder="anteater1@uci.edu" value="{{ request.form['email'] or member['email'] }}" required>
+  </div>
+
+  <div class="mb-3 ">
+  {% set cur_role = faculty['cur_role'] %}
+    <div class="d-flex">
+      <label class="fw-bold" class="align-self-center" for="role" style="width: 160px;">Faculty Role*&nbsp;</label>
+      <select class="form-select align-self-center" id="role" aria-label="Faculty Role" name="role">
+        {% for option, point in role_options.items() %}
+        <option
+          value="{{ option }}" data-point="{{ point }}" id="user_role_option"
+          {% if cur_role== option %} selected="selected"{% endif %}
+        >
+          {{ option }}
+        </option>
+        {% endfor %}
+      </select>
+    </div>
+  </div>
+  <div class="mb-3">
+    Faculty Role History in Current System:
+    <ul>
+    {% for f in faculty['role_history'] %}
+      {% set end_year = 'Present' if f['end_year'] is none else f['end_year'] %}
+      {% if f['active_status'] %}
+      <li>
+        {{ f['start_year'] }} - {{ end_year }}: {{ f['role'] }}
+      </li>
+      {% endif %}
+    {% endfor %}
+    </ul>
+  </div>
+
+  <div class="mb-3">
+    <label class="fw-bold">Status</label>
+    {% if faculty['cur_status'] == 1 %}
+      {% set active_radio = 'checked' %}
+      {% set inactive_radio = '' %}
+    {% else %}
+      {% set active_radio = '' %}
+      {% set inactive_radio = 'checked' %}
+    {% endif %}
+    <div class="btn-group" role="group" aria-label="Faculty Status">
+      <input type="radio" class="btn-check" name="status" id="status_active" autocomplete="off" value="1" {{ active_radio }}>
+      <label class="btn btn-outline-primary" for="status_active">Active</label>
+      <input type="radio" class="btn-check" name="status" id="status_inactive" autocomplete="off" value="0" {{ inactive_radio }}>
+      <label class="btn btn-outline-primary" for="status_inactive">Inactive</label>
+    </div>
+  </div>
+
+  <button type="button" class="btn btn-secondary">
+    <a href="{{ url_for('faculty.members') }}" style="text-decoration: none; color: white;">
+      Cancel
+    </a>
+  </button>
+  <button type="submit" class="btn btn-primary" id="addFacultyMember">
+    Save
+  </button>
+</form>
+{% endblock %}

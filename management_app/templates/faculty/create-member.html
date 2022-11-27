@@ -4,7 +4,7 @@
 {% block header %}Add Faculty Member{% endblock %}
 
 {% block content %}
-<form method="POST" action="{{ url_for('faculty.create') }}" enctype="multipart/form-data" class="col-lg-6 col-sm-12">
+<form method="POST" action="{{ url_for('faculty.create_member') }}" enctype="multipart/form-data" class="col-lg-6 col-sm-12">
   <div class="mb-3">
     <label for="name">Name*</label>
     <input name="name" type="text" class="form-control" id="name" placeholder="Anteater Smit" value="{{ request.form['name'] }}" required>
@@ -33,7 +33,7 @@
     </ul>
   </div>
   <button type="button" class="btn btn-secondary">
-    <a href="{{ url_for('faculty.index') }}" style="text-decoration: none; color: white;">Cancel</a>
+    <a href="{{ url_for('faculty.members') }}" style="text-decoration: none; color: white;">Cancel</a>
   </button>
   <button type="submit" class="btn btn-primary" id="addFacultyMember">Save</button>
 </form>
