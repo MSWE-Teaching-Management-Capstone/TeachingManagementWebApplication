@@ -58,29 +58,34 @@ def calculate_teaching_point_val(course_title_id, num_of_enrollment, offload_or_
     # elif course_level == "Undergrad" and units == 2:
     elif units == 2:
         # 2020-2021 (including: 2020 Fall(1) - 2021 Winter(2) & Spring(3))
-        if quarter == 1:
-            y1 = year
-            y2 = year+1
-            y3 = year+1
-        if quarter == 2 or quarter == 3:
-            y1 = year-1
-            y2 = year
-            y3 = year
-
-        # count by "teaching_point_val" column rather than by "units" column (units = 2) because we only stop giving points when the faculty is already given 0.5 in total
-        sql_statement = f"SELECT teaching_point_val FROM scheduled_teaching st JOIN courses ON st.course_title_id = courses.course_title_id WHERE ((year = {y1} AND quarter = 1) OR (year = {y2} AND quarter = 2) OR (year = {y3} AND quarter = 3)) AND units = 2 AND user_id = {user_id}"
-        rows = db.execute(sql_statement).fetchall()
-
-        sum_of_Cat4_pnt = 0
-        for row in rows:
-            sum_of_Cat4_pnt += row['teaching_point_val']
-        
         earned_pnt = point_c4 / num_of_co_taught
-        pnt_quota = 0.5 - sum_of_Cat4_pnt
-        if pnt_quota < earned_pnt:
-            return pnt_quota
-        else:
+
+        res = None
+        if quarter == 1:
             return earned_pnt
+        elif quarter == 2:
+            res = db.execute("""
+                SELECT SUM(st.teaching_point_val) AS total
+                FROM scheduled_teaching AS st JOIN courses AS c ON st.course_title_id = c.course_title_id
+                WHERE user_id = ? AND c.units = ? AND year = ? AND quarter = ?
+            """, (user_id, 2, year - 1, 1)).fetchone()
+        else:
+            res = db.execute("""
+                SELECT SUM(st.teaching_point_val) AS total
+                FROM scheduled_teaching AS st JOIN courses AS c ON st.course_title_id = c.course_title_id
+                WHERE user_id = ? AND c.units = ? AND ((year = ? AND quarter = ?) OR (year = ? AND quarter = ?))
+            """, (user_id, 2, year - 1, 1, year, 2)).fetchone()
+
+        # a faculty member can only have a max of 0.5 points per year for category 4
+        total = res['total']
+        if total is not None:
+            sum_of_Cat4_pnt = res['total']
+            if sum_of_Cat4_pnt >= 0.5:
+                return 0
+            elif sum_of_Cat4_pnt + earned_pnt > 0.5:
+                return 0.5 - sum_of_Cat4_pnt
+        
+        return earned_pnt
     # Cat 1-3 applies to 4 unit courses
     elif units == 4:
         if (course_level == "Undergrad" and num_of_enrollment >= 200) or (course_level == "Grad" and num_of_enrollment >= 100):
@@ -106,25 +111,19 @@ def get_faculty_roles_credit_due():
                 faculty_roles[key] = row['value']
     return faculty_roles
 
-def get_yearly_teaching_points(user_id, year):
+def get_yearly_teaching_points(user_id, start_year):
     # Note: year comes from faculty_point_info table, it represents the start of an an academic year
     # This year should convert to the range of academic year
     # e.g., year 2020 should be 2020-2021 (including 2020 Fall(1) - 2021 Winter(2) & Spring(3))
-    year_range_start = year
-    year_range_end = year + 1
-    yearly_teaching_points = 0
+    end_year = start_year + 1
     db = get_db()
-    rows = db.execute(
-        'SELECT st.teaching_point_val'
-        ' FROM scheduled_teaching AS st'
-        ' JOIN users ON users.user_id = st.user_id'
-        ' WHERE st.user_id = ? AND ((st.year = ? AND st.quarter = 1) OR (st.year = ? AND st.quarter = 2) OR (st.year = ? AND st.quarter = 3))',
-        (user_id, year_range_start, year_range_end, year_range_end)
-    ).fetchall()
+    res = db.execute("""
+        SELECT SUM(teaching_point_val) AS total
+        FROM scheduled_teaching
+        WHERE user_id = ? AND ((year = ? AND quarter = 1) OR (year = ? AND quarter = 2) OR (year = ? AND quarter = 3))
+    """, (user_id, start_year, end_year, end_year)).fetchone()
 
-    for row in rows:
-        yearly_teaching_points += row['teaching_point_val']
-    return yearly_teaching_points
+    return res['total']
 
 def get_grad_mentoring_points(grad_count):
     # TODO/Note: point per grad student and extra points are temporarily hard-coded
