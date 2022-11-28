@@ -16,13 +16,14 @@ faculty = Blueprint('faculty', __name__, url_prefix='/faculty')
 @login_required
 def faculty_index():
     year_options = get_professor_point_year_ranges()
-    year_select = request.args.get('year') or year_options[len(year_options)-1]
-    user_id = g.user['user_id']
-
+    point_info = {}
+    exceptions = []
+    offerings = []
     if len(year_options) > 0:
+        user_id = g.user['user_id']
+        year_select = request.args.get('year') or year_options[len(year_options)-1]
         year = int(year_select.split('-')[0])
         db = get_db()
-
         points = db.execute(
             'SELECT * from faculty_point_info WHERE user_id = ? AND year = ?', (user_id, year)
         ).fetchone()
@@ -46,9 +47,6 @@ def faculty_index():
                 'grad_point': get_grad_mentoring_points(points['grad_count']),
                 'exception_point': get_yearly_exception_points(user_id, year)
             }
-        else:
-            point_info = {}
-            offerings = []
         exceptions = get_faculty_yearly_exceptions(user_id, year)
     return render_template(
         'faculty/faculty-dashboard.html',
@@ -100,7 +98,10 @@ def upload(template):
             process_professors_point_file(file_path, 1, 'Professors_point_info')
 
         remove_upload_file(file)
-        return redirect(url_for('faculty.index'))
+        if template == 'addUsers':
+            return redirect(url_for('faculty.members'))
+        elif template == 'addProfessors':
+            return redirect(url_for('faculty.index'))
 
 @faculty.route('/create-member', methods=['GET', 'POST'])
 @login_required
@@ -180,6 +181,7 @@ def update_points(id, year):
         try:
             grad_count = request.form['grad_count']
             grad_students = request.form['grad_students']
+            grad_students = grad_students if len(grad_students) > 0 else None
 
             if 'exception_adjust' in request.form:
                 exception_adjust = request.form['exception_adjust']
@@ -303,11 +305,6 @@ def process_user_file(file_path, sheet__index, sheet__index_name):
     error = None
     try:
         df = pd.read_excel(file_path, sheet_name=sheet__index or sheet__index_name)
-        #Check if NaN in the sheet
-        df.loc[df['admin'].isnull(),'admin'] = 0
-        df['admin'] = df['admin'].astype(int)
-        df.loc[df['active_status'].isnull(),'active_status'] = 1
-        df['active_status'] = df['active_status'].astype(int)
         users_rows = df.values.tolist()
 
         if len(users_rows) == 0:
@@ -320,8 +317,8 @@ def process_user_file(file_path, sheet__index, sheet__index_name):
                 user_email = row[2]
                 user_ucinetid = row[3]
                 role = row[4].lower()
-                is_active = row[5]
-                is_admin = row[6]
+                is_active = 1 if pd.isna(row[5]) else row[5]
+                is_admin = 0 if pd.isna(row[6]) else row[6]
 
                 db = get_db()
                 user = get_exist_user(user_ucinetid) # Check exist user by ucinetid
@@ -354,11 +351,7 @@ def process_professors_point_file(file_path, sheet__index, sheet__index_name):
 
     try:
         df = pd.read_excel(file_path, sheet_name=sheet__index or sheet__index_name)
-        #Check if NaN in the sheet
-        df.loc[df['grad_students (students name)'].isnull(),'grad_students (students name)'] = ''
-        df['grad_students (students name)'] = df['grad_students (students name)'].astype(str)
         professors_point_rows = df.values.tolist()
-
         if len(professors_point_rows) == 0:
             error = 'No data source found. Please refresh and upload again.'
 
@@ -367,8 +360,8 @@ def process_professors_point_file(file_path, sheet__index, sheet__index_name):
         for row in professors_point_rows:
             year = row[0]
             user_ucinetid = row[2]
-            grad_count = row[3]
-            grad_students = row[4]
+            grad_count = float(row[3])
+            grad_students = None if pd.isna(row[4]) else str(row[4])
 
             user = get_exist_user(user_ucinetid)
             if user is None:
@@ -388,7 +381,7 @@ def process_professors_point_file(file_path, sheet__index, sheet__index_name):
                     # TODO: Need to remove this later and use the last year
                     previous_balance = get_yearly_previous_balance(user_id, year)
                     if previous_balance is None:
-                        previous_balance = row[5]
+                        previous_balance = float(row[5])
 
                     db = get_db()
                     try:
@@ -459,12 +452,10 @@ def get_professor_point_year_ranges():
 def get_yearly_previous_balance(user_id, year):
     db = get_db()
     row = db.execute(
-        'SELECT ending_balance FROM faculty_point_info WHERE user_id = ? AND year = ?',
+        'SELECT * FROM faculty_point_info WHERE user_id = ? AND year = ?',
         (user_id, year-1,)
     ).fetchone()
-    if row is None:
-        return None
-    return row['ending_balance']
+    return None if row is None else row['ending_balance']
 
 def get_all_faculty_point_info(year):
     faculties = []

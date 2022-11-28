@@ -20,7 +20,7 @@
 </div>
 
 <div style="font-size: 18px;">
-  {% if point_info %}
+  {% if point_info|length > 0 %}
   <h5><b>Previous year ending balance:</b> {{ point_info['previous_balance'] }}</h5>
   <h5><b>Ending balance:</b> {{ point_info['ending_balance'] }}</h5>
 
@@ -30,7 +30,7 @@
     <li>Grad points: {{ point_info['grad_point'] }}
       <ul>
         <li>Grad Count: {{ point_info['grad_count'] }}</li>
-        {% if point_info['grad_students']|length > 0 %}
+        {% if point_info['grad_students'] and point_info['grad_students']|length > 0 %}
         <li>Grad Students: {{ point_info['grad_students'] }}</li>
         {% endif %}
       </ul>
@@ -53,6 +53,7 @@
   <table class="table align-middle">
     <thead>
       <tr>
+        <th scope="col">Year-Quarter</th>
         <th scope="col">Title ID</th>
         <th scope="col">Section</th>
         <th scope="col">Course</th>
@@ -65,14 +66,21 @@
     </thead>
     <tbody>
       {% for offering in offerings %}
+      {% set year = offering['year'] %}
+      {% set quarter = offering['quarter'] %}
       <tr>
-        <th scope="row">{{ offering['course_title_id'] }}</th>
+        <th scope="row">
+          {% if quarter == 1 %} {{ year }} Fall {% endif %}
+          {% if quarter == 2 %} {{ year+1 }} Winter {% endif %}
+          {% if quarter == 3 %} {{ year+1 }} Spring {% endif %}
+        </th>
+        <td>{{ offering['course_title_id'] }}</td>
         <td>{{ offering['course_sec'] }}</td>
         <td>{{ offering['course_title'] }}</td>
         <td>{{ offering['units'] }}</td>
         <td>{{ offering['course_level'] }}</td>
         <td>{{ offering['enrollment'] }}</td>
-        <td>{% if offering['offload_or_recall_flag'] %} Yes {% else %} {% endif %}</td>
+        <td>{% if offering['offload_or_recall_flag'] == 1 %} Yes {% else %} No {% endif %}</td>
         <td>{{ offering['teaching_point_val'] }}</td>
       </tr>
       {% endfor %}

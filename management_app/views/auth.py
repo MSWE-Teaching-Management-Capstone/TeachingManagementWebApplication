@@ -110,7 +110,7 @@ def load_logged_in_user():
 
     if user_net_id is None:
         g.user = None
-    else:
+    elif get_exist_user(user_net_id):
         g.user = get_exist_user(user_net_id)
         g.is_admin = check_admin(user_net_id)
     return
