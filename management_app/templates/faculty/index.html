@@ -70,7 +70,9 @@
   <tbody>
     {% for faculty in faculties %}
       <tr class="{% if faculty['profile_status'] and faculty['profile_status']['active_status'] == 0 %}table-secondary{% endif %}">
-        <th scope="row">{{ faculty['name'] }}</th>
+        <th scope="row">
+          <a href="{{url_for('faculty.point_breakdown', id=faculty['user_id'])}}">{{ faculty['name'] }}</a>
+        </th>
         <td>{{ faculty['email'] }}</td>
         <td>
           {% if faculty['profile_status'] %}

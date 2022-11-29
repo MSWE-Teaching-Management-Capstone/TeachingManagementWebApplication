@@ -15,41 +15,16 @@ faculty = Blueprint('faculty', __name__, url_prefix='/faculty')
 @faculty.route('/', methods=['GET'])
 @login_required
 def faculty_index():
+    user_id = g.user['user_id']
+    faculty_name = g.user['user_name']
+    res = get_faculty_point_breakdown(user_id)
     year_options = get_professor_point_year_ranges()
-    point_info = {}
-    exceptions = []
-    offerings = []
-    if len(year_options) > 0:
-        user_id = g.user['user_id']
-        year_select = request.args.get('year') or year_options[len(year_options)-1]
-        year = int(year_select.split('-')[0])
-        db = get_db()
-        points = db.execute(
-            'SELECT * from faculty_point_info WHERE user_id = ? AND year = ?', (user_id, year)
-        ).fetchone()
-
-        if points is not None:
-            offerings = []
-            rows = db.execute(
-                ' SELECT * FROM scheduled_teaching AS st'
-                ' INNER JOIN courses AS c'
-                ' ON st.course_title_id = c.course_title_id'
-                ' WHERE user_id = ? AND ((year = ? AND quarter = 1) OR (year = ? AND quarter = 2) OR (year = ? AND quarter = 3))',
-                (user_id, year, year+1, year+1)
-            ).fetchall()
-
-            for row in rows:
-                offerings.append(row)
-
-            point_info = {
-                **points,
-                'teaching_point': get_yearly_teaching_points(user_id, year),
-                'grad_point': get_grad_mentoring_points(points['grad_count']),
-                'exception_point': get_yearly_exception_points(user_id, year)
-            }
-        exceptions = get_faculty_yearly_exceptions(user_id, year)
+    point_info = res[0]
+    exceptions = res[1]
+    offerings = res[2]
     return render_template(
         'faculty/faculty-dashboard.html',
+        faculty_name=faculty_name,
         year_options=year_options,
         point_info=point_info,
         exceptions=exceptions,
@@ -74,6 +49,25 @@ def index():
 def members():
     members = get_all_faculty_members()
     return render_template('faculty/members.html', members=members)
+
+@faculty.route('/points/<int:id>', methods=['GET'])
+@login_required
+def point_breakdown(id):
+    db = get_db()
+    faculty_name = db.execute('SELECT * FROM users WHERE user_id = ?', (id,)).fetchone()['user_name']
+    res = get_faculty_point_breakdown(id)
+    year_options = get_professor_point_year_ranges()
+    point_info = res[0]
+    exceptions = res[1]
+    offerings = res[2]
+    return render_template(
+        'faculty/faculty-dashboard.html',
+        faculty_name=faculty_name,
+        year_options=year_options,
+        point_info=point_info,
+        exceptions=exceptions,
+        offerings=offerings
+    )
 
 @faculty.route('/data-templates/<filename>', methods=['GET'])
 @login_required
@@ -577,6 +571,42 @@ def get_faculty_roles_history(user_id):
                 roles_status.pop()
                 roles_status[len(roles_status)-1]['end_year'] = row['end_year']
     return roles_status
+
+def get_faculty_point_breakdown(id):
+    year_options = get_professor_point_year_ranges()
+    point_info = {}
+    exceptions = []
+    offerings = []
+    if len(year_options) > 0:
+        user_id = id
+        year_select = request.args.get('year') or year_options[len(year_options)-1]
+        year = int(year_select.split('-')[0])
+        db = get_db()
+        points = db.execute(
+            'SELECT * from faculty_point_info WHERE user_id = ? AND year = ?', (user_id, year)
+        ).fetchone()
+
+        if points is not None:
+            offerings = []
+            rows = db.execute(
+                ' SELECT * FROM scheduled_teaching AS st'
+                ' INNER JOIN courses AS c'
+                ' ON st.course_title_id = c.course_title_id'
+                ' WHERE user_id = ? AND ((year = ? AND quarter = 1) OR (year = ? AND quarter = 2) OR (year = ? AND quarter = 3))',
+                (user_id, year, year+1, year+1)
+            ).fetchall()
+
+            for row in rows:
+                offerings.append(row)
+
+            point_info = {
+                **points,
+                'teaching_point': get_yearly_teaching_points(user_id, year),
+                'grad_point': get_grad_mentoring_points(points['grad_count']),
+                'exception_point': get_yearly_exception_points(user_id, year)
+            }
+        exceptions = get_faculty_yearly_exceptions(user_id, year)
+    return [point_info, exceptions, offerings]
 
 def insert_users(user_name, user_email, user_ucinetid, is_admin):
     db = get_db()
