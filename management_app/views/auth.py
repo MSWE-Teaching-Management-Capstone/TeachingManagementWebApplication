@@ -4,7 +4,7 @@ import functools
 
 import requests
 from werkzeug.exceptions import abort
-from flask import flash, session, redirect, request, render_template, Blueprint, url_for
+from flask import flash, session, redirect, request, render_template, Blueprint, url_for, g
 from management_app.views.utils import get_exist_user, check_admin
 from google.oauth2 import id_token
 from google_auth_oauthlib.flow import Flow
@@ -99,8 +99,18 @@ def login_callback():
 @auth.route("/redirect_to_homepage")
 @login_required
 def redirect_to_homepage():
-    # We currently use faculty page as home page for admins after signing in
     if session['is_admin']:
         return redirect('/faculty/points')
     else:
-        return redirect('/faculty')  # TODO: Redirect to regular user homepage
+        return redirect('/faculty')
+
+@auth.before_app_request
+def load_logged_in_user():
+    user_net_id = session.get('net_id')
+
+    if user_net_id is None:
+        g.user = None
+    elif get_exist_user(user_net_id):
+        g.user = get_exist_user(user_net_id)
+        g.is_admin = check_admin(user_net_id)
+    return

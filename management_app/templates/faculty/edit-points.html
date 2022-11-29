@@ -33,8 +33,9 @@
     <p>If no grad count, please type 0.0.</p>
   </div>
   <div class="mb-3">
+    {% set grad_students = point['grad_students'] if point['grad_students'] else '' %}
     <label class="fw-bold" for="grad_students">Grad Students</label>
-    <input name="grad_students" type="text" class="form-control" id="grad_students" placeholder="Johnny Wang, John Smith" value="{{ request.form['grad_students'] or point['grad_students'] }}">
+    <input name="grad_students" type="text" class="form-control" id="grad_students" placeholder="Johnny Wang, John Smith" value="{{ request.form['grad_students'] or grad_students }}">
     <p>Please use comma to separate students' name.</p>
   </div>
   <div class="mb-3">

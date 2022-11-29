@@ -122,8 +122,7 @@ def get_yearly_teaching_points(user_id, start_year):
         FROM scheduled_teaching
         WHERE user_id = ? AND ((year = ? AND quarter = 1) OR (year = ? AND quarter = 2) OR (year = ? AND quarter = 3))
     """, (user_id, start_year, end_year, end_year)).fetchone()
-
-    return res['total']
+    return 0 if res['total'] is None else res['total']
 
 def get_grad_mentoring_points(grad_count):
     # TODO/Note: point per grad student and extra points are temporarily hard-coded
