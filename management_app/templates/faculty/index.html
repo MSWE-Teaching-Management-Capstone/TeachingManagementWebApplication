@@ -104,7 +104,7 @@
 <div class="modal fade" id="importChange" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-labelledby="importChangeLabel" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content">
-      <form method="POST" action="{{ url_for('faculty.upload', template='addProfessors') }}" enctype="multipart/form-data">
+      <form method="POST" action="{{ url_for('faculty.upload', template='addProfessors') }}" enctype="multipart/form-data" onsubmit="if(!confirm('Do you already update faculty role from the member page before submit the point info?')){return false;}">
         <div class="modal-header">
           <h1 class="modal-title fs-5" id="importChangeLabel">Add faculty points info using the import template</h1>
           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
@@ -129,7 +129,7 @@
                 </div>
               </div>
             </div>
-            <p>If <b>faculty role</b> needs to update, please go to the Faculty Members to update role first before upload the new academic point data.</p>
+            <p>Reminder: If <b>faculty role</b> needs to update, please go to the Faculty Members to update role first before upload the new academic point data.</p>
           </div>
         </div>
         <div class="modal-footer">

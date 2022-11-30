@@ -23,25 +23,25 @@
           {% if g.user and g.is_admin %}
           <ul class="nav nav-pills nav-flush flex-column mb-auto text-center">
             <li class="nav-item">
-              <a href="/faculty/points" class="nav-link py-3 border-bottom rounded-0 active" aria-current="page" title="Home" data-bs-toggle="tooltip" data-bs-placement="right">
+              <a href="/faculty/points" class="nav-link py-3 border-bottom rounded-0 {% if request.path[1:].startswith('faculty') %}active{% endif %}" aria-current="page" title="Home" data-bs-toggle="tooltip" data-bs-placement="right">
                 <i class="fa-solid fa-user"></i>
                 <div>Faculty</div>
               </a>
             </li>
             <li>
-              <a href="/courses/offerings" class="nav-link py-3 border-bottom rounded-0" title="Dashboard" data-bs-toggle="tooltip" data-bs-placement="right">
+              <a href="/courses/offerings" class="nav-link py-3 border-bottom rounded-0 {% if request.path[1:].startswith('courses') %}active{% endif %}" title="Dashboard" data-bs-toggle="tooltip" data-bs-placement="right">
                 <i class="fa-solid fa-book"></i>
                 <div>Courses</div>
               </a>
             </li>
             <li>
-              <a href="/logs/exception" class="nav-link py-3 border-bottom rounded-0" title="Orders" data-bs-toggle="tooltip" data-bs-placement="right">
+              <a href="/logs/exception" class="nav-link py-3 border-bottom rounded-0 {% if request.path[1:].startswith('logs') %}active{% endif %}" title="Orders" data-bs-toggle="tooltip" data-bs-placement="right">
                 <i class="fa-solid fa-database"></i>
                 <div>Logs</div>
               </a>
             </li>
             <li>
-              <a href="/settings/admins" class="nav-link py-3 border-bottom rounded-0" title="Products" data-bs-toggle="tooltip" data-bs-placement="right">
+              <a href="/settings/admins" class="nav-link py-3 border-bottom rounded-0 {% if request.path[1:].startswith('settings') %}active{% endif %}" title="Products" data-bs-toggle="tooltip" data-bs-placement="right">
                 <i class="fa-solid fa-gear"></i>
                 <div>Settings</div>
               </a>

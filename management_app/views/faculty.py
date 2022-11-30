@@ -6,7 +6,7 @@ from datetime import datetime
 
 from management_app.db import get_db
 from management_app.views.auth import login_required
-from management_app.views.utils import download_file, upload_file, remove_upload_file, get_upload_filepath
+from management_app.views.utils import download_file, upload_file, remove_upload_file, get_upload_filepath, insert_log
 from management_app.views.points import calculate_yearly_ending_balance, get_faculty_roles_credit_due, update_yearly_ending_balance, get_yearly_teaching_points, get_grad_mentoring_points, get_yearly_exception_points
 
 faculty = Blueprint('faculty', __name__, url_prefix='/faculty')
@@ -138,6 +138,7 @@ def create_member():
                     (user_id, start_year, role, 1)
                 )
                 db.commit()
+                insert_log('Admin', user_id, None, 'Add new faculty member')
             except:
                 error = 'Database insert error. User is already existed.'
 
@@ -201,6 +202,8 @@ def update_points(id, year):
 
             # Update total ending_point finally
             update_yearly_ending_balance(id, year)
+
+            insert_log('Admin', id, None, 'Update faculty member points')
         except Exception as e:
             error = 'Failed to update. Please refresh and fill the correct info again.'
 
@@ -276,6 +279,8 @@ def update_member(id):
 
                 if cur_status != status and role_end_year is None:
                     update_faculty_status(id, role_start_year, cur_year, role, status)
+
+                insert_log('Admin', id, None, 'Update faculty member information')
         except Exception as e:
             print(e)
             error = 'Failed to update. Please refresh and fill the correct info again.'
@@ -336,6 +341,7 @@ def process_user_file(file_path, sheet__index, sheet__index_name):
         flash(error, 'error')
         return
 
+    insert_log('System', None, None, 'Upload users spreadsheet')
     flash('Upload users data succesfully!', 'success')
     return
 
@@ -391,6 +397,7 @@ def process_professors_point_file(file_path, sheet__index, sheet__index_name):
         flash(error, 'error')
         return
 
+    insert_log('System', None, None, 'Upload professors point spreadsheet')
     flash('Upload professors point info data succesfully!', 'success')
     return
 
@@ -458,7 +465,8 @@ def get_all_faculty_point_info(year):
         'SELECT users.user_id, users.user_name, users.user_email, faculty.credit_due,faculty.previous_balance, faculty.ending_balance'
         ' FROM users'
         ' JOIN faculty_point_info AS faculty ON users.user_id = faculty.user_id'
-        ' WHERE faculty.year = ?',
+        ' WHERE faculty.year = ?'
+        ' ORDER BY users.user_name',
         (year,)
     ).fetchall()
 
@@ -488,6 +496,7 @@ def get_all_faculty_members():
         ' FROM users AS u'
         ' LEFT JOIN faculty_status AS f ON u.user_id = f.user_id'
         " WHERE f.end_year IS NULL AND f.role != 'staff'"
+        ' ORDER BY u.user_name'
     ).fetchall()
     for row in rows:
         members.append({
@@ -643,13 +652,19 @@ def insert_faculty_point_info(user_id, year, previous_balance, grad_count, grad_
     return
 
 def insert_exception(user_id, year, exception_category, exception_message, points):
-    # TODO: need to retrieve exception_id and write to log table later
     db = get_db()
-    db.execute(
+    cursor = db.cursor()
+    cursor.execute(
         'INSERT INTO exceptions (user_id, year, exception_category, message, points)'
         ' VALUES (?, ?, ?, ?, ?)',
         (user_id, year, exception_category, exception_message, points)
     )
+
+    exception_id = cursor.lastrowid
+    log_category = exception_category
+    if len(exception_message) > 0:
+        log_category += '_' + exception_message
+    insert_log('Admin', user_id, exception_id, log_category)
     db.commit()
     return
 
@@ -706,6 +721,9 @@ def update_faculty_status(user_id, start_year, cur_year, role, status):
             (user_id, cur_year, status, role)
         )
     db.commit()
+
+    status_msg = 'Active' if status == 1 else 'Inactive'
+    insert_log('Admin', user_id, None, 'Update faculty member status to "{}"'.format(status_msg))
     return
 
 def update_faculty_grad_info(user_id, year, grad_count, grad_students):

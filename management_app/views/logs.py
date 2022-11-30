@@ -121,15 +121,9 @@ def convert_description(category, affected_user_id):
 
 def get_username_from_id(user_id):
     db = get_db()
-
-    res = db.execute(
-        'SELECT user_name'
-        ' FROM users'
-        ' WHERE users.user_id = ?',
-        str(user_id) if not isinstance(user_id, str) else user_id
+    res = db.execute('SELECT * FROM users WHERE user_id = ?', (user_id,)
     ).fetchone()
-
-    return res['user_name']
+    return res['user_name'] if res is not None else ''
 
 
 def convert_local_timezone(utc_timestamp):

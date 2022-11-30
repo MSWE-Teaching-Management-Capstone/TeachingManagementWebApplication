@@ -27,7 +27,6 @@ def upload_file(file):
         save_location = get_upload_filepath(filename)
         if (save_location.startswith(BASE_DIR)):
             file.save(save_location)
-            # TODO: Call logs API later
             print('Upload {} successfully'.format(filename))
     return
 
@@ -36,7 +35,6 @@ def remove_upload_file(file):
     filename = secure_filename(file.filename)
     save_location = get_upload_filepath(filename)
     os.remove(save_location)
-    # TODO: Call logs API later
     print('Remove {} successfully'.format(filename))
     return
 
@@ -61,8 +59,8 @@ def check_admin(net_id):
 
 def insert_log(owner: str, user_id: None, exception_id: None, log_category: None):
     db = get_db()
-    db.execute("INSERT INTO logs"
-               " VALUES(?, ?, ?, ?)",
+    db.execute("INSERT INTO logs (owner, created, user_id, exception_id, log_category)"
+               " VALUES(?, CURRENT_TIMESTAMP, ?, ?, ?)",
                (owner, user_id, exception_id, log_category))
     db.commit()
     return
