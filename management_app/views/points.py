@@ -153,15 +153,19 @@ def calculate_yearly_ending_balance(user_id, year, grad_count, previous_balance,
 
 def get_latest_academic_year():
     db = get_db()
-    return db.execute(
-        'SELECT DISTINCT year FROM faculty_point_info ORDER BY year DESC'
-    ).fetchone()['year']
+    res = db.execute(
+        'SELECT DISTINCT year FROM faculty_point_info ORDER BY year DESC LIMIT 1'
+    ).fetchone()
+    return res['year'] if res is not None else None
 
 def update_yearly_ending_balance(user_id, year):
     # Note that year parameter represents the start of an an academic year
     # e.g., year 2020 should be 2020-2021 (including 2020 Fall(1) - 2021 Winter(2) & Spring(3))
     db = get_db()
     latest_year = get_latest_academic_year()
+    # no point record, no need to update
+    if latest_year is None:
+        return
 
     diff = 0
     for y in range(year, latest_year+1):

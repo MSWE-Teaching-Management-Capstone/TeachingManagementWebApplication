@@ -458,7 +458,8 @@ def get_all_faculty_point_info(year):
         'SELECT users.user_id, users.user_name, users.user_email, faculty.credit_due,faculty.previous_balance, faculty.ending_balance'
         ' FROM users'
         ' JOIN faculty_point_info AS faculty ON users.user_id = faculty.user_id'
-        ' WHERE faculty.year = ?',
+        ' WHERE faculty.year = ?'
+        ' ORDER BY users.user_name',
         (year,)
     ).fetchall()
 
@@ -488,6 +489,7 @@ def get_all_faculty_members():
         ' FROM users AS u'
         ' LEFT JOIN faculty_status AS f ON u.user_id = f.user_id'
         " WHERE f.end_year IS NULL AND f.role != 'staff'"
+        ' ORDER BY u.user_name'
     ).fetchall()
     for row in rows:
         members.append({
