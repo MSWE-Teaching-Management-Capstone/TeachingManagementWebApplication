@@ -7,7 +7,7 @@ VALUES
 
 INSERT INTO faculty_status (user_id, start_year, end_year, active_status, role)
 VALUES
-  (1, 2022, null, 1, 'tenured POT'),
+  (1, 2022, null, 1, 'tenured pot'),
   (2, 2022, null, 1, 'assistant professor (2nd+ year)'),
   (3, 2020, 2021, 0, 'tenured research professor');
 

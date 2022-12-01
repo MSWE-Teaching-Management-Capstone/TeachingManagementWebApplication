@@ -2,6 +2,7 @@ from flask import Blueprint, Response, render_template, flash, make_response, re
 
 from management_app.db import get_db
 from management_app.views.auth import login_required
+from management_app.views.points import get_latest_academic_year, calculate_teaching_point_val, update_yearly_ending_balance
 from management_app.views.utils import insert_log
 
 settings = Blueprint('settings', __name__, url_prefix='/settings')
@@ -95,3 +96,58 @@ def update_rule_point_value(id, value):
     db.commit()
     new = db.execute('SELECT * FROM rules WHERE rule_id = ?', (id,)).fetchone()
     insert_log(session['name'], None, None, f'Update point policy - Rule Name: {new["rule_name"]} | Value: {old["value"]} -> {new["value"]}')
+    update_teaching_point_balances(new['rule_id'])
+
+def update_teaching_point_balances(rule_id):
+    db = get_db()
+    rule = db.execute('SELECT * FROM rules WHERE rule_id = ?', (rule_id,)).fetchone()
+    rule_name = rule['rule_name']
+    start_year = get_latest_academic_year()
+
+    if rule_name.startswith('Role-'):
+        role = rule_name.removeprefix('Role-').lower()
+        faculty = db.execute('SELECT user_id FROM faculty_status WHERE active_status IS TRUE AND role = ?', (role,)).fetchall()
+
+        for user in faculty:
+            db.execute('UPDATE faculty_point_info SET credit_due = ? WHERE user_id = ? AND year = ?', (rule['value'], user['user_id'], start_year))
+        
+        db.commit()
+        
+        for user in faculty:
+            update_yearly_ending_balance(user['user_id'], start_year)
+    elif rule_name.startswith('Category'):
+        end_year = start_year + 1
+        offerings = db.execute("""
+            SELECT *
+            FROM scheduled_teaching
+            WHERE (year = ? AND quarter = 1) OR (year = ? AND (quarter = 2 OR quarter = 3))
+        """, (start_year, end_year)).fetchall()
+
+        for offering in offerings:
+            co_taught = db.execute("""
+                SELECT COUNT(DISTINCT user_id) AS num
+                FROM scheduled_teaching
+                GROUP BY year, quarter, course_title_id
+                HAVING year = ? AND quarter = ? AND course_title_id = ?
+            """, (offering['year'], offering['quarter'], offering['course_title_id'])).fetchone()
+            value = calculate_teaching_point_val(
+                offering['course_title_id'],
+                offering['enrollment'],
+                offering['offload_or_recall_flag'],
+                offering['year'],
+                offering['quarter'],
+                offering['user_id'],
+                co_taught['num']
+            )
+            if value != offering['teaching_point_val']:
+                db.execute("""
+                    UPDATE scheduled_teaching
+                    SET teaching_point_val = ?
+                    WHERE user_id = ? AND year = ? AND quarter = ? AND course_title_id = ? AND course_sec = ?
+                """, (value, offering['user_id'], offering['year'], offering['quarter'], offering['course_title_id'], offering['course_sec']))
+        
+        db.commit()
+
+        faculty = db.execute('SELECT user_id FROM faculty_status WHERE active_status IS TRUE').fetchall()
+        for user in faculty:
+            update_yearly_ending_balance(user['user_id'], start_year)

@@ -66,12 +66,39 @@ def test_point_policy(app, client, auth):
             rules = db.execute('SELECT * FROM rules').fetchall()
             assert context['rules'] == rules
 
-def test_edit_rule_point_value(app, client, auth):
+def test_edit_rule_point_value_role(app, client, auth):
     auth.login()
-    response = client.post('/settings/point-policy/rules/1', data={'point-value': '2.5'})
+    # test using "Role-assistant professor (2nd+ year)""
+    response = client.post('/settings/point-policy/rules/4', data={'point-value': '3.5'})
     assert response.status_code == 302
 
     with app.app_context():
         db = get_db()
-        rule = db.execute('SELECT * FROM rules WHERE rule_id = 1').fetchone()
-        assert rule['value'] == 2.5
+        rule = db.execute('SELECT * FROM rules WHERE rule_id = 4').fetchone()
+        assert rule['value'] == 3.5
+        
+        # once a role constant changes the ending balance of faculty with the affected role should be updated as well
+        prof = db.execute('SELECT ending_balance, credit_due FROM faculty_point_info WHERE user_id = 2 and year = 2022').fetchone()
+        assert prof['ending_balance'] == -1.625
+        assert prof['credit_due'] == 3.5
+
+def test_edit_rule_point_value_category(app, client, auth):
+    auth.login()
+    # test using category 2 (only ICS 53 classes should be affected)
+    response = client.post('/settings/point-policy/rules/11', data={'point-value': '1.5'})
+    assert response.status_code == 302
+
+    with app.app_context():
+        db = get_db()
+        rule = db.execute('SELECT * FROM rules WHERE rule_id = 11').fetchone()
+        assert rule['value'] == 1.5
+
+        # once a category constant changes the teaching point val of the course offerings should be updated
+        offerings = db.execute("SELECT teaching_point_val FROM scheduled_teaching WHERE course_title_id = 'ICS53'").fetchall()
+        assert len(offerings) == 2
+        assert offerings[0]['teaching_point_val'] == 1.5
+        assert offerings[1]['teaching_point_val'] == 1.5
+
+        # the affected faculty's ending balance should be updated as well
+        prof = db.execute('SELECT ending_balance FROM faculty_point_info WHERE user_id = 1 and year = 2022').fetchone()
+        assert prof['ending_balance'] == 2.5
