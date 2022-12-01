@@ -1,9 +1,8 @@
 from flask import (Blueprint, render_template, redirect, url_for, request)
-from datetime import datetime
-import datetime as dt
 
 from management_app.db import get_db
 from management_app.views.auth import login_required
+from management_app.views.utils import convert_local_timezone
 
 logs = Blueprint('logs', __name__, url_prefix='/logs')
 
@@ -124,7 +123,3 @@ def get_username_from_id(user_id):
     res = db.execute('SELECT * FROM users WHERE user_id = ?', (user_id,)
     ).fetchone()
     return res['user_name'] if res is not None else ''
-
-
-def convert_local_timezone(utc_timestamp):
-    return utc_timestamp.replace(tzinfo=dt.timezone.utc).astimezone(tz=None).strftime('%m/%d/%Y %H:%M:%S')

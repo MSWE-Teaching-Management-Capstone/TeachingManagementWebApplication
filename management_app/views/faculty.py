@@ -6,7 +6,7 @@ from datetime import datetime
 
 from management_app.db import get_db
 from management_app.views.auth import login_required
-from management_app.views.utils import download_file, upload_file, remove_upload_file, get_upload_filepath, insert_log
+from management_app.views.utils import download_file, upload_file, remove_upload_file, get_upload_filepath, insert_log, convert_local_timezone
 from management_app.views.points import calculate_yearly_ending_balance, get_faculty_roles_credit_due, update_yearly_ending_balance, get_yearly_teaching_points, get_grad_mentoring_points, get_yearly_exception_points
 
 faculty = Blueprint('faculty', __name__, url_prefix='/faculty')
@@ -35,6 +35,7 @@ def faculty_index():
 @login_required
 def index():
     if request.method == 'GET':
+        upload_time = get_upload_points_latest_time()
         year_options = get_professor_point_year_ranges()
         if ((len(year_options)) == 0):
             faculties = []
@@ -42,7 +43,7 @@ def index():
             year_select = request.args.get('year') or year_options[len(year_options)-1]
             year = int(year_select.split('-')[0])
             faculties = get_all_faculty_point_info(year)
-        return render_template('faculty/index.html', faculties=faculties, year_options=year_options)
+        return render_template('faculty/index.html', faculties=faculties, year_options=year_options, upload_time=upload_time)
 
 @faculty.route('/members', methods=['GET'])
 @login_required
@@ -129,7 +130,6 @@ def create_member():
                     ' VALUES (?, ?, ?, ?)',
                     (name, email, ucinetid, 0)
                 )
-
                 user_id = cursor.lastrowid
                 start_year = datetime.now().year
                 cursor.execute(
@@ -138,7 +138,9 @@ def create_member():
                     (user_id, start_year, role, 1)
                 )
                 db.commit()
-                insert_log('Admin', user_id, None, 'Add new faculty member')
+
+                owner = 'Admin: ' + g.user['user_name']
+                insert_log(owner, user_id, None, 'Add new faculty member')
             except:
                 error = 'Database insert error. User is already existed.'
 
@@ -203,7 +205,8 @@ def update_points(id, year):
             # Update total ending_point finally
             update_yearly_ending_balance(id, year)
 
-            insert_log('Admin', id, None, 'Update faculty member points')
+            owner = 'Admin: ' + g.user['user_name']
+            insert_log(owner, id, None, 'Update faculty member points')
         except Exception as e:
             error = 'Failed to update. Please refresh and fill the correct info again.'
 
@@ -280,7 +283,8 @@ def update_member(id):
                 if cur_status != status and role_end_year is None:
                     update_faculty_status(id, role_start_year, cur_year, role, status)
 
-                insert_log('Admin', id, None, 'Update faculty member information')
+                owner = 'Admin: ' + g.user['user_name']
+                insert_log(owner, id, None, 'Update faculty member information')
         except Exception as e:
             print(e)
             error = 'Failed to update. Please refresh and fill the correct info again.'
@@ -664,7 +668,8 @@ def insert_exception(user_id, year, exception_category, exception_message, point
     log_category = exception_category
     if len(exception_message) > 0:
         log_category += '_' + exception_message
-    insert_log('Admin', user_id, exception_id, log_category)
+    owner = 'Admin: ' + g.user['user_name']
+    insert_log(owner, user_id, exception_id, log_category)
     db.commit()
     return
 
@@ -723,7 +728,8 @@ def update_faculty_status(user_id, start_year, cur_year, role, status):
     db.commit()
 
     status_msg = 'Active' if status == 1 else 'Inactive'
-    insert_log('Admin', user_id, None, 'Update faculty member status to "{}"'.format(status_msg))
+    owner = 'Admin: ' + g.user['user_name']
+    insert_log(owner, user_id, None, 'Update faculty member status to "{}"'.format(status_msg))
     return
 
 def update_faculty_grad_info(user_id, year, grad_count, grad_students):
@@ -735,3 +741,14 @@ def update_faculty_grad_info(user_id, year, grad_count, grad_students):
     )
     db.commit()
     return
+
+def get_upload_points_latest_time():
+    db = get_db()
+    res = db.execute(
+        """SELECT * FROM logs
+         WHERE log_category LIKE '%Upload professors point%'
+         ORDER BY created DESC LIMIT 1"""
+    ).fetchone()
+    if res is None:
+        return 'No record'
+    return convert_local_timezone(res['created'])

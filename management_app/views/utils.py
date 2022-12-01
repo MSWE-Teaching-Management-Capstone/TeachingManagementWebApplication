@@ -1,6 +1,7 @@
 import os
 from flask import send_from_directory
 from werkzeug.utils import secure_filename
+import datetime as dt
 from management_app.db import get_db
 
 BASE_DIR = os.path.realpath(os.path.join(os.path.dirname(__file__), '..'))
@@ -64,3 +65,6 @@ def insert_log(owner: str, user_id: int = None, exception_id: int = None, log_ca
                (owner, user_id, exception_id, log_category))
     db.commit()
     return
+
+def convert_local_timezone(utc_timestamp):
+    return utc_timestamp.replace(tzinfo=dt.timezone.utc).astimezone(tz=None).strftime('%m/%d/%Y %H:%M:%S')
