@@ -33,3 +33,4 @@ Werkzeug==2.2.2
 zipp==3.8.1
 pandas==1.5.1
 openpyxl==3.0.10
+Gunicorn==20.1.0
