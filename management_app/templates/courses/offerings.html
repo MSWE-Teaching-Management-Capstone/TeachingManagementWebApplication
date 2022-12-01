@@ -42,18 +42,13 @@
   <div class="col-9">
     <div class="d-grid justify-content-end">
       <div class="d-inline-flex">
-        <button type="button" class="btn btn-primary mt-3" data-bs-toggle="modal" data-bs-target="#importChange">
+        <button style="margin-right: 20px;" type="button" class="btn btn-primary mt-3" data-bs-toggle="modal" data-bs-target="#importChange">
           <i class="fa-solid fa-download"></i>
           Import Changes
         </button>
-        <div class="dropdown" style="margin-left: 20px;">
-          <button class="btn btn-secondary fw-bold mt-3" type="button" data-bs-toggle="dropdown" aria-expanded="false">
-            ⋮
-          </button>
-          <ul class="dropdown-menu">
-            <li><a class="dropdown-item" href="{{ url_for('courses.create') }}"><i class="fa-solid fa-plus"></i> Add Course Offering </a></li>
-          </ul>
-        </div>
+        <button type="button" class="btn btn-primary mt-3" data-bs-toggle="modal" data-bs-target="#addModal">
+          <a class="dropdown-item" href="{{ url_for('courses.create') }}"><i class="fa-solid fa-plus"></i> Add Course Offering </a>
+        </button>        
       </div>
   </div>
 </div>
@@ -87,9 +82,10 @@
             <button class="btn btn-secondary fw-bold" type="button" data-bs-toggle="dropdown" aria-expanded="false">⋮</button>
             <ul class="dropdown-menu">
               <li>
-                <button type="button" class="dropdown-item" data-bs-toggle="modal" data-bs-target="{{'#deleteModalSelf' if admin == current_user else '#deleteModal'}}">
-                  <i class="fa-solid fa-trash"></i></i> Delete
-                </button>
+                <a class="dropdown-item" href="{{ url_for('courses.update_offering', user_id=course['user_id'], year=course['year'], quarter=course['quarter'], course_title_id=course['course_title_id'], course_sec=course['course_sec'], enrollment=course['enrollment']) }}"><i class="fa-solid fa-pen-to-square"></i> Edit </a>
+              </li>
+              <li>
+                <a class="dropdown-item" href="{{ url_for('courses.delete_offering', user_id=course['user_id'], year=course['year'], quarter=course['quarter'], course_title_id=course['course_title_id'], course_sec=course['course_sec']) }}"><i class="fa-solid fa-trash"></i> Delete </a>
               </li>
             </ul>
           </div>

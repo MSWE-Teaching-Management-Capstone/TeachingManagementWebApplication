@@ -49,7 +49,7 @@ def offerings():
                 y_end = year_options[-1].split('-')[1]
 
             courses = db.execute(
-                'SELECT year, quarter, user_name, st.course_title_id, course_sec, enrollment'
+                'SELECT year, quarter, user_name, st.course_title_id, course_sec, enrollment, st.user_id'
                 ' FROM scheduled_teaching st JOIN courses ON st.course_title_id = courses.course_title_id JOIN users ON st.user_id = users.user_id'
                 ' WHERE (year = ? AND quarter = 1) OR (year = ? AND quarter = 2) OR (year = ? AND quarter = 3)'
                 ' ORDER BY year DESC, quarter DESC, st.course_title_id', (y_start, y_end, y_end)
@@ -210,6 +210,44 @@ def create():
         return redirect(url_for('courses.offerings'))
     return render_template('courses/create.html', ucinetid_options=ucinetid_options)
 
+
+
+@courses.route('/update/<int:user_id>/<int:year>/<int:quarter>/<course_title_id>/<course_sec>', methods=['GET', 'POST'])
+@login_required
+def update_offering(user_id, year, quarter, course_title_id, course_sec):
+    course = {
+        'year': year,
+        'quarter': quarter,
+        'user_name': get_user_name(user_id),
+        'course_title_id': course_title_id,
+        'course_sec': course_sec
+    }
+    
+    if request.method == 'POST':
+        num_of_enrollment = request.form['enrollment']
+        db = get_db()
+        db.execute(
+            'UPDATE scheduled_teaching SET enrollment = ?'
+            ' WHERE user_id = ? AND year = ? AND quarter = ? AND course_title_id = ? AND course_sec = ?', 
+            (num_of_enrollment, user_id, year, quarter, course_title_id, course_sec)
+        )
+        db.commit()
+        return redirect(url_for('courses.offerings'))
+    return render_template('courses/edit-offering.html', course=course)
+
+
+@courses.route('/delete/<int:user_id>/<int:year>/<int:quarter>/<course_title_id>/<course_sec>', methods=['GET', 'POST'])
+@login_required
+def delete_offering(user_id, year, quarter, course_title_id, course_sec):
+    db = get_db()
+    db.execute(
+        'DELETE FROM scheduled_teaching '
+        ' WHERE user_id = ? AND year = ? AND quarter = ? AND course_title_id = ? AND course_sec = ?', 
+        (user_id, year, quarter, course_title_id, course_sec)
+    )
+    db.commit()
+    return redirect(url_for('courses.offerings'))
+
 def is_valid_input(year, quarter, user_UCINetID_list, course_title_id, course_sec, num_of_enrollment, offload_or_recall_flag):   
     db = get_db()
 
@@ -337,6 +375,17 @@ def get_user_id(user_UCINetID):
         user_id = row[0]
 
     return user_id
+
+def get_user_name(user_id):
+    db = get_db()
+    row = db.execute(
+        'SELECT user_name FROM users'
+        ' WHERE user_id = ?', (user_id,)
+    ).fetchone()
+    if row != None:
+        user_name = row[0]
+
+    return user_name
 
 def get_teaching_point_val(num_of_enrollment, user_id_and_academic_year_set, user_id, academic_year, combine_with, rows_dict, course_title_id, year, quarter, course_sec, offload_or_recall_flag, num_of_co_taught): 
     if num_of_enrollment == -1:
