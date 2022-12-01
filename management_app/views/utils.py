@@ -57,7 +57,7 @@ def check_admin(net_id):
     return True if res == 1 else False
 
 
-def insert_log(owner: str, user_id: None, exception_id: None, log_category: None):
+def insert_log(owner: str, user_id: int = None, exception_id: int = None, log_category: str = None):
     db = get_db()
     db.execute("INSERT INTO logs (owner, created, user_id, exception_id, log_category)"
                " VALUES(?, CURRENT_TIMESTAMP, ?, ?, ?)",

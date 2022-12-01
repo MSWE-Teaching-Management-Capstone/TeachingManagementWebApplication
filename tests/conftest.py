@@ -44,6 +44,7 @@ class AuthActions(object):
     def login(self, **kwargs):
         with self._client.session_transaction() as session:
             session['google_id'] = ''
+            session['name'] = ''
             for key in kwargs:
                 session[key] = kwargs[key]
 
