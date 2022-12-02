@@ -1,0 +1,34 @@
+{% extends 'base.html' %}
+
+{% block title %} Edit Course Offering {% endblock %}
+{% block header %} Edit Course Offering {% endblock %}
+
+{% block content %}
+
+
+<div>
+  <h4>Year: {{ course["year"] }}</h4>
+</div>
+<form method="POST" enctype="multipart/form-data" class="col-lg-6 col-sm-12" style="padding-bottom: 60px;">
+  <div class="mb-3">
+    <label class="fw-bold" for="quarter">Quarter:</label> {{ course["quarter"] }}
+  </div>
+  <div class="mb-3">
+    <label class="fw-bold" for="professor">Professor:</label> {{ course["user_name"] }}
+  </div>
+  <div class="mb-3">
+    <label class="fw-bold" for="titleid">Title ID:</label> {{ course["course_title_id"] }}
+  </div>
+  <div class="mb-3">
+    <label class="fw-bold" for="section">Section:</label> {{ course["course_sec"] }}
+  </div>
+  <div class="mb-3">
+    <label class="fw-bold" for="enrollment">Enrollment*</label>
+    <input name="enrollment" type="text" class="form-control" id="enrollment" placeholder="e.g. 88" value="{{ request.form['enrollment']}}" required>
+  </div>
+  <button type="button" class="btn btn-secondary">
+    <a href="{{ url_for('courses.offerings') }}" style="text-decoration: none; color: white;">Cancel</a>
+  </button>
+  <button type="submit" class="btn btn-primary" id="addCourseOffering">Save</button>
+</form>
+{% endblock %}

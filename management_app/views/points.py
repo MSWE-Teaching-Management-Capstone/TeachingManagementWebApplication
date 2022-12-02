@@ -1,4 +1,5 @@
 from management_app.db import get_db
+from flask import flash
 
 def calculate_teaching_point_val(course_title_id, num_of_enrollment, offload_or_recall_flag, year, quarter, user_id, num_of_co_taught):
     # rules: 
@@ -44,7 +45,14 @@ def calculate_teaching_point_val(course_title_id, num_of_enrollment, offload_or_
     if course_title_id[-1] == "P":
         if offload_or_recall_flag == 0 or offload_or_recall_flag is None:
             return point_c2
-        # TODO: if previous_yearly_balance >= 0   (generate warning if this happens, don't stop this)
+        # if previous_yearly_balance < 0: generate warning but don't stop this action
+        if get_previous_year_point_balance(year, quarter, user_id) < 0:
+            ucinetid = db.execute(
+                'SELECT user_ucinetid FROM users'
+                ' WHERE user_id = ?', (user_id,)
+            ).fetchone()[0]
+            warning_msg = f"Warning: User {ucinetid} teaches offload with a negative point balance."
+            flash(warning_msg, 'warning')
         return 0
     # rules #2
     elif num_of_enrollment < 8:
@@ -199,3 +207,19 @@ def update_yearly_ending_balance(user_id, year):
             )
             db.commit()
     return
+
+def get_previous_year_point_balance(year, quarter, user_id):    
+    if quarter == 1:
+        academic_year = year
+    if quarter == 2 or quarter == 3:
+        academic_year = year-1
+
+    db = get_db()
+    previous_balance = db.execute(
+        'SELECT previous_balance FROM faculty_point_info'
+        ' WHERE user_id = ? AND year = ?', (user_id, academic_year)
+    ).fetchone()
+    if previous_balance is None:
+        return 0
+    else:
+        return previous_balance['previous_balance']

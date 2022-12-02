@@ -1,4 +1,4 @@
-from flask import Blueprint, redirect, render_template, url_for, request, flash
+from flask import Blueprint, redirect, render_template, url_for, request, flash, g
 from werkzeug.utils import secure_filename
 import pandas as pd
 from datetime import date
@@ -6,7 +6,7 @@ import re
 
 from management_app.views.auth import login_required
 from management_app.db import get_db
-from management_app.views.utils import download_file, upload_file, remove_upload_file, get_upload_filepath
+from management_app.views.utils import download_file, upload_file, remove_upload_file, get_upload_filepath, insert_log, convert_local_timezone
 from management_app.views.points import calculate_teaching_point_val, update_yearly_ending_balance
 
 
@@ -17,6 +17,7 @@ courses = Blueprint('courses', __name__, url_prefix='/courses')
 @login_required
 def offerings():
     if request.method == 'GET':
+        upload_time = get_latest_scheduled_teaching_upload_time()
         db = get_db()        
         year_options = []
         courses = []       
@@ -49,13 +50,13 @@ def offerings():
                 y_end = year_options[-1].split('-')[1]
 
             courses = db.execute(
-                'SELECT year, quarter, user_name, st.course_title_id, course_sec, enrollment'
+                'SELECT year, quarter, user_name, st.course_title_id, course_sec, enrollment, st.user_id'
                 ' FROM scheduled_teaching st JOIN courses ON st.course_title_id = courses.course_title_id JOIN users ON st.user_id = users.user_id'
                 ' WHERE (year = ? AND quarter = 1) OR (year = ? AND quarter = 2) OR (year = ? AND quarter = 3)'
                 ' ORDER BY year DESC, quarter DESC, st.course_title_id', (y_start, y_end, y_end)
             ).fetchall()
             
-        return render_template('courses/offerings.html', courses=courses, year_options=year_options)
+        return render_template('courses/offerings.html', courses=courses, year_options=year_options, upload_time=upload_time)
 
 
 
@@ -132,7 +133,7 @@ def upload_user_file():
             if type(quarter) == str:
                 quarter = quarter.lower()
                 if quarter in quarterDict.keys():
-                    quarter = quarterDict[quarter]                    
+                    quarter = quarterDict[quarter]
             
             academic_year = get_academic_year(year, quarter)            
             
@@ -157,10 +158,12 @@ def upload_user_file():
 
             insert_or_update_scheduled_teaching_for_each_user(user_UCINetID_list, num_of_enrollment, user_id_and_academic_year_set, academic_year, combine_with, rows_dict, course_title_id, year, quarter, course_sec, offload_or_recall_flag, num_of_co_taught)            
 
+        owner = 'Admin: ' + g.user['user_name']
+        insert_log(owner, None, None, "Upload scheduled teaching file")
         flash('Upload scheduled teaching file successfully!', 'success')
 
         # rules #5: Combined grad/undergraduate classes
-        calculate_combined_classes_and_update_scheduled_teaching(rows_dict)        
+        calculate_combined_classes_and_update_scheduled_teaching(rows_dict)
 
         for pair in user_id_and_academic_year_set:
             update_yearly_ending_balance(pair[0], pair[1])
@@ -170,9 +173,9 @@ def upload_user_file():
         return redirect(url_for('courses.offerings'))
 
 
-@courses.route('/create', methods=['GET', 'POST'])
+@courses.route('/create_offering', methods=['GET', 'POST'])
 @login_required
-def create():
+def create_offering():
     ucinetid_options = get_ucinetid()
     if request.method == 'POST':
         year = request.form['year']
@@ -184,6 +187,8 @@ def create():
             user_UCINetID_list = get_ucinetid_list(request.form['multi_ucinetid'])
         user_UCINetID_list.append(request.form['ucinetid'])
         
+        user_id = get_user_id(request.form['ucinetid'])
+
         num_of_co_taught = len(user_UCINetID_list)
         course_title_id = request.form['course_title_id'].strip().replace(' ', '')
         combine_with = get_combine_with(course_title_id)
@@ -199,6 +204,9 @@ def create():
         rows_dict = {}
         insert_or_update_scheduled_teaching_for_each_user(user_UCINetID_list, num_of_enrollment, user_id_and_academic_year_set, academic_year, combine_with, rows_dict, course_title_id, year, quarter, course_sec, offload_or_recall_flag, num_of_co_taught)
 
+
+        owner = 'Admin: ' + g.user['user_name']
+        insert_log(owner, user_id, None, "Add scheduled teaching")
         flash('Add scheduled teaching data successfully!', 'success')
 
         # rules #5: Combined grad/undergraduate classes
@@ -208,7 +216,55 @@ def create():
         #     update_yearly_ending_balance(pair[0], pair[1])
 
         return redirect(url_for('courses.offerings'))
-    return render_template('courses/create.html', ucinetid_options=ucinetid_options)
+    return render_template('courses/create-offering.html', ucinetid_options=ucinetid_options)
+
+
+
+@courses.route('/update/<int:user_id>/<int:year>/<int:quarter>/<course_title_id>/<course_sec>', methods=['GET', 'POST'])
+@login_required
+def update_offering(user_id, year, quarter, course_title_id, course_sec):
+    course = {
+        'year': year,
+        'quarter': quarter,
+        'user_name': get_user_name(user_id),
+        'course_title_id': course_title_id,
+        'course_sec': course_sec
+    }
+    
+    if request.method == 'POST':
+        num_of_enrollment = request.form['enrollment']
+        db = get_db()
+        db.execute(
+            'UPDATE scheduled_teaching SET enrollment = ?'
+            ' WHERE user_id = ? AND year = ? AND quarter = ? AND course_title_id = ? AND course_sec = ?', 
+            (num_of_enrollment, user_id, year, quarter, course_title_id, course_sec)
+        )
+        db.commit()
+
+        owner = 'Admin: ' + g.user['user_name']
+        insert_log(owner, user_id, None, "Edit scheduled teaching")
+        flash('Edit scheduled teaching data successfully!', 'success')
+
+        return redirect(url_for('courses.offerings'))
+    return render_template('courses/edit-offering.html', course=course)
+
+
+@courses.route('/delete/<int:user_id>/<int:year>/<int:quarter>/<course_title_id>/<course_sec>', methods=['GET', 'POST'])
+@login_required
+def delete_offering(user_id, year, quarter, course_title_id, course_sec):
+    db = get_db()
+    db.execute(
+        'DELETE FROM scheduled_teaching '
+        ' WHERE user_id = ? AND year = ? AND quarter = ? AND course_title_id = ? AND course_sec = ?', 
+        (user_id, year, quarter, course_title_id, course_sec)
+    )
+    db.commit()
+
+    owner = 'Admin: ' + g.user['user_name']
+    insert_log(owner, user_id, None, "Delete scheduled teaching")
+    flash('Delete scheduled teaching data successfully!', 'success')
+
+    return redirect(url_for('courses.offerings'))
 
 def is_valid_input(year, quarter, user_UCINetID_list, course_title_id, course_sec, num_of_enrollment, offload_or_recall_flag):   
     db = get_db()
@@ -219,7 +275,7 @@ def is_valid_input(year, quarter, user_UCINetID_list, course_title_id, course_se
             'SELECT * FROM users WHERE user_ucinetid = ?', (ucinetid,)
         ).fetchone()
         if user is None:
-            err_msg = f"User {ucinetid} not exists in the system. Operation failed."
+            err_msg = f"Operation failed: User {ucinetid} not exists in the system."
             flash(err_msg, 'error')
             return False
 
@@ -228,7 +284,7 @@ def is_valid_input(year, quarter, user_UCINetID_list, course_title_id, course_se
         'SELECT * FROM courses WHERE course_title_id = ?', (course_title_id,)
     ).fetchone()
     if course is None:
-        err_msg = f"Course {course_title_id} not exists in the system. Operation failed."
+        err_msg = f"Operation failed: Course {course_title_id} not exists in the system."
         flash(err_msg, 'error')
         return False
     
@@ -259,7 +315,7 @@ def is_valid_input(year, quarter, user_UCINetID_list, course_title_id, course_se
     else:        
         return True
     
-    err_msg = f"Incorrect data format on {col_name} column. Operation failed."
+    err_msg = f"Operation failed: Incorrect data format on {col_name} column."
     flash(err_msg, 'error')
     return False
 
@@ -294,7 +350,7 @@ def update_scheduled_teaching(num_of_enrollment, offload_or_recall_flag, teachin
 def get_ucinetid():
     ucinetids = []
     db = get_db()
-    rows = db.execute('SELECT DISTINCT user_ucinetid FROM users').fetchall()
+    rows = db.execute('SELECT DISTINCT user_ucinetid FROM users ORDER BY user_ucinetid ASC').fetchall()
     for row in rows:
         ucinetids.append(row["user_ucinetid"])
     return ucinetids
@@ -313,7 +369,7 @@ def get_combine_with(course_title_id):
     combine_with = db.execute(
         'SELECT combine_with FROM courses'
         ' WHERE course_title_id = ?', (course_title_id,)
-    ).fetchone()    
+    ).fetchone()
     return combine_with if combine_with is None else combine_with[0]
 
 def get_num_of_enrollment(num):
@@ -337,6 +393,17 @@ def get_user_id(user_UCINetID):
         user_id = row[0]
 
     return user_id
+
+def get_user_name(user_id):
+    db = get_db()
+    row = db.execute(
+        'SELECT user_name FROM users'
+        ' WHERE user_id = ?', (user_id,)
+    ).fetchone()
+    if row != None:
+        user_name = row[0]
+
+    return user_name
 
 def get_teaching_point_val(num_of_enrollment, user_id_and_academic_year_set, user_id, academic_year, combine_with, rows_dict, course_title_id, year, quarter, course_sec, offload_or_recall_flag, num_of_co_taught): 
     if num_of_enrollment == -1:
@@ -384,3 +451,15 @@ def insert_or_update_scheduled_teaching_for_each_user(user_UCINetID_list, num_of
             insert_scheduled_teaching(user_id, year, quarter, course_title_id, course_sec, num_of_enrollment, offload_or_recall_flag, teaching_point_val)
         else:
             update_scheduled_teaching(num_of_enrollment, offload_or_recall_flag, teaching_point_val, user_id, year, quarter, course_title_id, course_sec)
+
+
+def get_latest_scheduled_teaching_upload_time():
+    db = get_db()
+    res = db.execute(
+        """SELECT * FROM logs
+         WHERE log_category LIKE '%Upload scheduled teaching file%'
+         ORDER BY created DESC LIMIT 1"""
+    ).fetchone()
+    if res is None:
+        return ""
+    return convert_local_timezone(res['created'])
