@@ -340,16 +340,6 @@ def edit_course(id):
 
     return render_template('courses/edit-course.html', course=course)
 
-@courses.route('/catalog/course/<int:id>', methods=['DELETE'])
-@login_required
-def delete_course(id):
-    db = get_db()
-    course = db.execute('SELECT course_title_id FROM courses WHERE course_id = ?', (id,)).fetchone()
-    db.execute('DELETE FROM courses WHERE course_id = ?', (id,))
-    db.commit()
-    insert_log('Admin: ' + g.user['user_name'], None, None, f"Deleted course ({course['course_title_id']})")
-    return Response(status=200)
-
 
 def is_course_title_id_taken(title_id):
     db = get_db()
