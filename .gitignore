@@ -32,4 +32,7 @@ htmlcov/
 .coverage.*
 *,cover
 
+# Put a temporary file "uplaod.md" to prevent empty folder
+!management_app/static/upload_files
 management_app/static/upload_files/*
+!management_app/static/upload_files/upload.md
