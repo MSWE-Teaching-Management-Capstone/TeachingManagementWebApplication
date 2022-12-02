@@ -1,0 +1,31 @@
+{% extends 'base.html' %}
+
+{% block title %}Edit Course ({{course['course_title_id']}}){% endblock %}
+{% block header %}Edit Course ({{course['course_title_id']}}){% endblock %}
+
+{% block content %}
+<form method="post" action="{{url_for('courses.edit_course', id=course['course_id'])}}" class="col-lg-6 col-sm-12">
+  <div class="mb-3">
+    <label for="title">Course Title*</label>
+    <input name="title" type="text" class="form-control" id="title" value="{{course['course_title']}}" required>
+  </div>
+  <div class="mb-3">
+    <label for="level">Course Level*</label>
+    <select name="level" id="level" class="form-select" aria-label="Course Level Selection" required>
+      <option value="Undergrad" {{'selected' if course['course_level'] == 'Undergrad'}}>Undergradute</option>
+      <option value="Grad" {{'selected' if course['course_level'] == 'Grad'}}>Gradute</option>
+      <option value="Professional" {{'selected' if course['course_level'] == 'Professional'}}>Professional</option>
+    </select>
+  </div>
+  <div class="mb-3">
+    <label for="units">Units*</label>
+    <input type="number" id="units" name="units" min="0" step="any" value="{{course['units']}}" required>
+  </div>
+  <div class="mb-3">
+    <label for="combine-with">Combine With Course (Optional)</label>
+    <input name="combine-with" type="text" class="form-control" id="combine-with" placeholder="e.g. ICS 31" value="{{course['combine_with']}}">
+  </div>
+  <a href="{{url_for('courses.catalog')}}" class="btn btn-primary" tabindex="-1" role="button">Cancel</a>
+  <button type="submit" class="btn btn-primary">Save</button>
+</form>
+{% endblock %}

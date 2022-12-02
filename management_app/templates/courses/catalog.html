@@ -1,0 +1,112 @@
+{% extends 'base.html' %}
+
+{% block title %}Courses{% endblock %}
+{% block header %}Course Catalog{% endblock %}
+
+{% block header_content %}
+  <nav class="navbar navbar-expand-sm bg-light">
+    <div class="container-fluid">
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      <div class="collapse navbar-collapse" id="navbarNav">
+        <ul class="navbar-nav">
+          <li class="nav-item">
+            <a class="nav-link active" aria-current="page" href="/courses/offerings">Offerings</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="/courses/catalog">Catalog</a>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </nav>
+{% endblock %}
+
+{% block content %}
+<div class="d-grid justify-content-end">
+  <a href="{{url_for('courses.add_course')}}" class="btn btn-primary" tabindex="-1" role="button"><i class="fa-solid fa-plus"></i> Add Course</a>
+</div>
+
+<table class="table align-middle">
+  <thead>
+    <tr>
+      <th scope="col">Title ID</th>
+      <th scope="col">Title</th>
+      <th scope="col">Level</th>
+      <th scope="col">Units</th>
+      <th scope="col"></th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for course in courses %}
+      <tr>
+        <th scope="row">{{ course['course_title_id'] }}</th>
+        <td>{{ course['course_title'] }}</td>
+        <td>{{ course['course_level'] }}</td>
+        <td>{{ course['units'] }}</td>
+        <td>
+          <div class="dropdown d-grid justify-content-end">
+            <button class="btn btn-secondary fw-bold" type="button" data-bs-toggle="dropdown" aria-expanded="false">⋮</button>
+            <ul class="dropdown-menu">
+              <li>
+                <a class="dropdown-item" href="{{url_for('courses.edit_course', id=course['course_id'])}}"><i class="fa-solid fa-pen-to-square"></i> Edit</a>
+                <button type="button" class="dropdown-item delete-btn"
+                        data-id="{{course['course_id']}}"
+                        data-title-id="{{course['course_title_id']}}"
+                        data-title="{{course['course_title']}}"
+                        data-bs-toggle="modal"
+                        data-bs-target="#deleteModal">
+                  <i class="fa-solid fa-trash"></i></i> Delete
+                </button>
+              </li>
+            </ul>
+          </div>
+        </td>
+      </tr>
+    {% endfor %}
+  </tbody>
+</table>
+<div class="modal fade" id="deleteModal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-labelledby="deleteModalTitle" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h1 class="modal-title fs-5" id="deleteModalTitle">Delete Course</h1>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <p>Are you sure you want to delete course <b id="courseName">[course title id]</b>?</p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">No</button>
+        <button type="button" id="deleteModalYes" class="btn btn-primary">Yes</button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  let selectedId = null;
+  let selectedTitleId = null;
+  let selectedTitle = null;
+
+  const onClickDelete = function (event) {
+    selectedId = event.currentTarget.dataset.id;
+    selectedTitleId = event.currentTarget.dataset.titleId;
+    selectedTitle = event.currentTarget.dataset.title;
+    document.getElementById('courseName').innerText = selectedTitleId + ' (' + selectedTitle + ')';
+  }
+  const deleteButtons = document.getElementsByClassName('delete-btn');
+  for (const button of deleteButtons) {
+    button.addEventListener('click', onClickDelete);
+  }
+
+  const onConfirmDelete = async function () {
+    const response = await fetch('/courses/catalog/course/' + selectedId, {method: 'DELETE'});
+    window.location.replace('/courses/catalog');
+  }
+  document.getElementById('deleteModalYes').addEventListener('click', onConfirmDelete);
+</script>
+{% endblock %}
