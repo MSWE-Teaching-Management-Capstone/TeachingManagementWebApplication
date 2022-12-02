@@ -1,0 +1,35 @@
+{% extends 'base.html' %}
+
+{% block title %}Add Course{% endblock %}
+{% block header %}Add Course{% endblock %}
+
+{% block content %}
+<form method="post" action="{{url_for('courses.add_course')}}" class="col-lg-6 col-sm-12">
+  <div class="mb-3">
+    <label for="title-id">Course Title ID*</label>
+    <input name="title-id" type="text" class="form-control" id="title-id" placeholder="e.g. ICS 31" required>
+  </div>
+  <div class="mb-3">
+    <label for="title">Course Title*</label>
+    <input name="title" type="text" class="form-control" id="title" required>
+  </div>
+  <div class="mb-3">
+    <label for="level">Course Level*</label>
+    <select name="level" id="level" class="form-select" aria-label="Course Level Selection" required>
+      <option value="Undergrad" selected>Undergradute</option>
+      <option value="Grad">Gradute</option>
+      <option value="Professional">Professional</option>
+    </select>
+  </div>
+  <div class="mb-3">
+    <label for="units">Units*</label>
+    <input type="number" id="units" name="units" min="0" step="any" required>
+  </div>
+  <div class="mb-3">
+    <label for="combine-with">Combine With Course (Optional)</label>
+    <input name="combine-with" type="text" class="form-control" id="combine-with" placeholder="e.g. ICS 31">
+  </div>
+  <a href="{{url_for('courses.catalog')}}" class="btn btn-primary" tabindex="-1" role="button">Cancel</a>
+  <button type="submit" class="btn btn-primary">Add Course</button>
+</form>
+{% endblock %}
