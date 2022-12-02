@@ -4,6 +4,15 @@
 - Back-end framework: Flask
 - Database: SQLite3
 
+## How to visit the deployed site
+1. Connect to UCI VPN
+2. open `/etc/hosts` on your local machine, append the following line:
+```
+128.195.13.110 cstpoints.com
+```
+3. Save and exit, then visit [cstpoints.com:5000](cstpoints.com:5000)
+
+
 ## Project Setup
 
 ### Prerequisite
