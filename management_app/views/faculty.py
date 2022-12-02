@@ -313,6 +313,9 @@ def process_user_file(file_path, sheet__index, sheet__index_name):
         if len(users_rows) == 0:
             error = 'No data source found. Please refresh and upload again.'
         else:
+            users_temp = []
+            faculty_status_temp = []
+
             # We need initial year data as start_year to determine the range of role and active status
             for row in users_rows:
                 start_year = row[0]
@@ -323,19 +326,12 @@ def process_user_file(file_path, sheet__index, sheet__index_name):
                 is_active = 1 if pd.isna(row[5]) else row[5]
                 is_admin = 0 if pd.isna(row[6]) else row[6]
 
-                db = get_db()
-                user = get_exist_user(user_ucinetid) # Check exist user by ucinetid
+                users_temp.append({ 'user_name': user_name, 'user_email': user_email, 'user_ucinetid': user_ucinetid, 'is_admin': is_admin })
 
-                if user is None:
-                    try:
-                        # If role is staff, just keep admin flag in users table and no need to know staff's active role range
-                        insert_users(user_name, user_email, user_ucinetid, is_admin)
-                        if role != 'staff':
-                            insert_faculty_status(user_ucinetid, start_year, role, is_active)
-                    except db.IntegrityError:
-                        error = 'Database insert error. Please refresh and upload correct file with new user data.'
-                        print('INTEGRITY ERROR\n', traceback.print_exc())
-                elif row is not None:
+                faculty_status_temp.append({ 'user_ucinetid': user_ucinetid, 'start_year': start_year, 'role': role, 'is_active': is_active })
+
+                user = get_exist_user(user_ucinetid) # Check exist user by ucinetid
+                if user is not None:
                     error = 'Database insert error. User is already existed. Please refresh and upload correct file with new user data.'
     except Exception as e:
         print(e)
@@ -344,6 +340,14 @@ def process_user_file(file_path, sheet__index, sheet__index_name):
     if error is not None:
         flash(error, 'error')
         return
+
+    # Only when all upload data is valid, store data into the database
+    for user in users_temp:
+        insert_users(user['user_name'], user['user_email'], user['user_ucinetid'], user['is_admin'])
+
+    for faculty in faculty_status_temp:
+        if faculty['role'] != 'staff':
+            insert_faculty_status(faculty['user_ucinetid'], faculty['start_year'], faculty['role'], faculty['is_active'])
 
     owner = 'Admin: ' + g.user['user_name']
     insert_log(owner, None, None, 'Upload users spreadsheet')
@@ -362,6 +366,7 @@ def process_professors_point_file(file_path, sheet__index, sheet__index_name):
 
         # Note: year represents the start of academic year quarter
         # e.g., year 2019 for 2019-2020 (2019 Fall, 2020 Winter, 2020 Spring)
+        point_temp = []
         for row in professors_point_rows:
             year = row[0]
             user_ucinetid = row[2]
@@ -383,17 +388,11 @@ def process_professors_point_file(file_path, sheet__index, sheet__index_name):
                     role = profile_status['role'].lower()
                     credit_due = faculty_roles[role]
 
-                    # TODO: Need to remove this later and use the last year
                     previous_balance = get_yearly_previous_balance(user_id, year)
                     if previous_balance is None:
                         previous_balance = float(row[5])
 
-                    db = get_db()
-                    try:
-                        insert_faculty_point_info(user_id, year, previous_balance, grad_count, grad_students, credit_due)
-                    except db.IntegrityError:
-                        print('INTEGRITY ERROR\n', traceback.print_exc())
-                        error = 'Database insert error. Please refresh and upload correct file with data of a new academic year.'
+                    point_temp.append({ 'user_id': user_id, 'year': year, 'previous_balance': previous_balance, 'grad_count': grad_count, 'grad_students': grad_students, 'credit_due': credit_due })
     except Exception as e:
         print(e)
         error = 'Failed to upload. Please refresh and upload the correct format with new academic year and active users data again.'
@@ -401,6 +400,10 @@ def process_professors_point_file(file_path, sheet__index, sheet__index_name):
     if error is not None:
         flash(error, 'error')
         return
+
+    # Only when all upload data is valid, store data into the database
+    for point in point_temp:
+        insert_faculty_point_info(point['user_id'], point['year'], point['previous_balance'], point['grad_count'], point['grad_students'], point['credit_due'])
 
     owner = 'Admin: ' + g.user['user_name']
     insert_log(owner, None, None, 'Upload professors point spreadsheet')
