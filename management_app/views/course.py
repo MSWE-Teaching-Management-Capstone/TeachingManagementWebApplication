@@ -299,6 +299,7 @@ def add_course():
                 VALUES (?, ?, ?, ?, ?)
             """, (title_id, title, units, level, combine_with))
             db.commit()
+            insert_log('Admin: ' + g.user['user_name'], None, None, f"Added new course ({title_id})")
             flash('Course added successfully!', 'success')
         
     return render_template('courses/add-course.html')
@@ -334,6 +335,7 @@ def edit_course(id):
             """, (title, level, units, combine_with, id))
             db.commit()
             update_teaching_point_balances(course['course_title_id'])
+            insert_log('Admin: ' + g.user['user_name'], None, None, f"Edited course ({course['course_title_id']})")
             flash('Update successfully!', 'success')
 
     return render_template('courses/edit-course.html', course=course)
@@ -342,8 +344,10 @@ def edit_course(id):
 @login_required
 def delete_course(id):
     db = get_db()
+    course = db.execute('SELECT course_title_id FROM courses WHERE course_id = ?', (id,)).fetchone()
     db.execute('DELETE FROM courses WHERE course_id = ?', (id,))
     db.commit()
+    insert_log('Admin: ' + g.user['user_name'], None, None, f"Deleted course ({course['course_title_id']})")
     return Response(status=200)
 
 
@@ -362,9 +366,6 @@ def update_teaching_point_balances(title_id):
         FROM scheduled_teaching
         WHERE ((year = ? AND quarter = 1) OR (year = ? AND (quarter = 2 OR quarter = 3))) AND course_title_id = ?
     """, (start_year, end_year, title_id)).fetchall()
-
-    print(len(offerings))
-    print(offerings[0]['course_title_id'])
 
     for offering in offerings:
         co_taught = db.execute("""
