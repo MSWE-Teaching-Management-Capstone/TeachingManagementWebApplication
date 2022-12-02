@@ -345,7 +345,8 @@ def process_user_file(file_path, sheet__index, sheet__index_name):
         flash(error, 'error')
         return
 
-    insert_log('System', None, None, 'Upload users spreadsheet')
+    owner = 'Admin: ' + g.user['user_name']
+    insert_log(owner, None, None, 'Upload users spreadsheet')
     flash('Upload users data succesfully!', 'success')
     return
 
@@ -401,7 +402,8 @@ def process_professors_point_file(file_path, sheet__index, sheet__index_name):
         flash(error, 'error')
         return
 
-    insert_log('System', None, None, 'Upload professors point spreadsheet')
+    owner = 'Admin: ' + g.user['user_name']
+    insert_log(owner, None, None, 'Upload professors point spreadsheet')
     flash('Upload professors point info data succesfully!', 'success')
     return
 
