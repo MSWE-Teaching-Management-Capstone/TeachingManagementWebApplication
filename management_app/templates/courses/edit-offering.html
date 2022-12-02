@@ -24,7 +24,7 @@
   </div>
   <div class="mb-3">
     <label class="fw-bold" for="enrollment">Enrollment*</label>
-    <input name="enrollment" type="text" class="form-control" id="enrollment" placeholder="88" value="{{ request.form['enrollment']}}" required>
+    <input name="enrollment" type="text" class="form-control" id="enrollment" placeholder="e.g. 88" value="{{ request.form['enrollment']}}" required>
   </div>
   <button type="button" class="btn btn-secondary">
     <a href="{{ url_for('courses.offerings') }}" style="text-decoration: none; color: white;">Cancel</a>

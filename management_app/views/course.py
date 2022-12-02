@@ -6,7 +6,7 @@ import re
 
 from management_app.views.auth import login_required
 from management_app.db import get_db
-from management_app.views.utils import download_file, upload_file, remove_upload_file, get_upload_filepath
+from management_app.views.utils import download_file, upload_file, remove_upload_file, get_upload_filepath, insert_log
 from management_app.views.points import calculate_teaching_point_val, update_yearly_ending_balance
 
 
@@ -157,6 +157,7 @@ def upload_user_file():
 
             insert_or_update_scheduled_teaching_for_each_user(user_UCINetID_list, num_of_enrollment, user_id_and_academic_year_set, academic_year, combine_with, rows_dict, course_title_id, year, quarter, course_sec, offload_or_recall_flag, num_of_co_taught)            
 
+        insert_log("Admin", None, None, "Upload scheduled teaching file")
         flash('Upload scheduled teaching file successfully!', 'success')
 
         # rules #5: Combined grad/undergraduate classes
@@ -170,9 +171,9 @@ def upload_user_file():
         return redirect(url_for('courses.offerings'))
 
 
-@courses.route('/create', methods=['GET', 'POST'])
+@courses.route('/create_offering', methods=['GET', 'POST'])
 @login_required
-def create():
+def create_offering():
     ucinetid_options = get_ucinetid()
     if request.method == 'POST':
         year = request.form['year']
@@ -184,6 +185,8 @@ def create():
             user_UCINetID_list = get_ucinetid_list(request.form['multi_ucinetid'])
         user_UCINetID_list.append(request.form['ucinetid'])
         
+        user_id = get_user_id(request.form['ucinetid'])
+
         num_of_co_taught = len(user_UCINetID_list)
         course_title_id = request.form['course_title_id'].strip().replace(' ', '')
         combine_with = get_combine_with(course_title_id)
@@ -199,6 +202,9 @@ def create():
         rows_dict = {}
         insert_or_update_scheduled_teaching_for_each_user(user_UCINetID_list, num_of_enrollment, user_id_and_academic_year_set, academic_year, combine_with, rows_dict, course_title_id, year, quarter, course_sec, offload_or_recall_flag, num_of_co_taught)
 
+
+        
+        insert_log("Admin", user_id, None, "Add scheduled teaching")
         flash('Add scheduled teaching data successfully!', 'success')
 
         # rules #5: Combined grad/undergraduate classes
@@ -208,7 +214,7 @@ def create():
         #     update_yearly_ending_balance(pair[0], pair[1])
 
         return redirect(url_for('courses.offerings'))
-    return render_template('courses/create.html', ucinetid_options=ucinetid_options)
+    return render_template('courses/create-offering.html', ucinetid_options=ucinetid_options)
 
 
 
@@ -232,6 +238,10 @@ def update_offering(user_id, year, quarter, course_title_id, course_sec):
             (num_of_enrollment, user_id, year, quarter, course_title_id, course_sec)
         )
         db.commit()
+
+        insert_log("Admin", user_id, None, "Edit scheduled teaching")
+        flash('Edit scheduled teaching data successfully!', 'success')
+
         return redirect(url_for('courses.offerings'))
     return render_template('courses/edit-offering.html', course=course)
 
@@ -246,6 +256,10 @@ def delete_offering(user_id, year, quarter, course_title_id, course_sec):
         (user_id, year, quarter, course_title_id, course_sec)
     )
     db.commit()
+
+    insert_log("Admin", user_id, None, "Delete scheduled teaching")
+    flash('Delete scheduled teaching data successfully!', 'success')
+
     return redirect(url_for('courses.offerings'))
 
 def is_valid_input(year, quarter, user_UCINetID_list, course_title_id, course_sec, num_of_enrollment, offload_or_recall_flag):   
