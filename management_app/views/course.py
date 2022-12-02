@@ -1,4 +1,4 @@
-from flask import Blueprint, redirect, render_template, url_for, request, flash
+from flask import Blueprint, redirect, render_template, url_for, request, flash, g
 from werkzeug.utils import secure_filename
 import pandas as pd
 from datetime import date
@@ -6,7 +6,7 @@ import re
 
 from management_app.views.auth import login_required
 from management_app.db import get_db
-from management_app.views.utils import download_file, upload_file, remove_upload_file, get_upload_filepath, insert_log
+from management_app.views.utils import download_file, upload_file, remove_upload_file, get_upload_filepath, insert_log, convert_local_timezone
 from management_app.views.points import calculate_teaching_point_val, update_yearly_ending_balance
 
 
@@ -17,6 +17,7 @@ courses = Blueprint('courses', __name__, url_prefix='/courses')
 @login_required
 def offerings():
     if request.method == 'GET':
+        upload_time = get_latest_scheduled_teaching_upload_time()
         db = get_db()        
         year_options = []
         courses = []       
@@ -55,7 +56,7 @@ def offerings():
                 ' ORDER BY year DESC, quarter DESC, st.course_title_id', (y_start, y_end, y_end)
             ).fetchall()
             
-        return render_template('courses/offerings.html', courses=courses, year_options=year_options)
+        return render_template('courses/offerings.html', courses=courses, year_options=year_options, upload_time=upload_time)
 
 
 
@@ -132,7 +133,7 @@ def upload_user_file():
             if type(quarter) == str:
                 quarter = quarter.lower()
                 if quarter in quarterDict.keys():
-                    quarter = quarterDict[quarter]                    
+                    quarter = quarterDict[quarter]
             
             academic_year = get_academic_year(year, quarter)            
             
@@ -157,11 +158,12 @@ def upload_user_file():
 
             insert_or_update_scheduled_teaching_for_each_user(user_UCINetID_list, num_of_enrollment, user_id_and_academic_year_set, academic_year, combine_with, rows_dict, course_title_id, year, quarter, course_sec, offload_or_recall_flag, num_of_co_taught)            
 
-        insert_log("Admin", None, None, "Upload scheduled teaching file")
+        owner = 'Admin: ' + g.user['user_name']
+        insert_log(owner, None, None, "Upload scheduled teaching file")
         flash('Upload scheduled teaching file successfully!', 'success')
 
         # rules #5: Combined grad/undergraduate classes
-        calculate_combined_classes_and_update_scheduled_teaching(rows_dict)        
+        calculate_combined_classes_and_update_scheduled_teaching(rows_dict)
 
         for pair in user_id_and_academic_year_set:
             update_yearly_ending_balance(pair[0], pair[1])
@@ -203,8 +205,8 @@ def create_offering():
         insert_or_update_scheduled_teaching_for_each_user(user_UCINetID_list, num_of_enrollment, user_id_and_academic_year_set, academic_year, combine_with, rows_dict, course_title_id, year, quarter, course_sec, offload_or_recall_flag, num_of_co_taught)
 
 
-        
-        insert_log("Admin", user_id, None, "Add scheduled teaching")
+        owner = 'Admin: ' + g.user['user_name']
+        insert_log(owner, user_id, None, "Add scheduled teaching")
         flash('Add scheduled teaching data successfully!', 'success')
 
         # rules #5: Combined grad/undergraduate classes
@@ -239,7 +241,8 @@ def update_offering(user_id, year, quarter, course_title_id, course_sec):
         )
         db.commit()
 
-        insert_log("Admin", user_id, None, "Edit scheduled teaching")
+        owner = 'Admin: ' + g.user['user_name']
+        insert_log(owner, user_id, None, "Edit scheduled teaching")
         flash('Edit scheduled teaching data successfully!', 'success')
 
         return redirect(url_for('courses.offerings'))
@@ -257,7 +260,8 @@ def delete_offering(user_id, year, quarter, course_title_id, course_sec):
     )
     db.commit()
 
-    insert_log("Admin", user_id, None, "Delete scheduled teaching")
+    owner = 'Admin: ' + g.user['user_name']
+    insert_log(owner, user_id, None, "Delete scheduled teaching")
     flash('Delete scheduled teaching data successfully!', 'success')
 
     return redirect(url_for('courses.offerings'))
@@ -447,3 +451,15 @@ def insert_or_update_scheduled_teaching_for_each_user(user_UCINetID_list, num_of
             insert_scheduled_teaching(user_id, year, quarter, course_title_id, course_sec, num_of_enrollment, offload_or_recall_flag, teaching_point_val)
         else:
             update_scheduled_teaching(num_of_enrollment, offload_or_recall_flag, teaching_point_val, user_id, year, quarter, course_title_id, course_sec)
+
+
+def get_latest_scheduled_teaching_upload_time():
+    db = get_db()
+    res = db.execute(
+        """SELECT * FROM logs
+         WHERE log_category LIKE '%Upload scheduled teaching file%'
+         ORDER BY created DESC LIMIT 1"""
+    ).fetchone()
+    if res is None:
+        return ""
+    return convert_local_timezone(res['created'])
