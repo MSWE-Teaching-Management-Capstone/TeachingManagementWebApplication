@@ -6,11 +6,7 @@ import re
 
 from management_app.views.auth import login_required
 from management_app.db import get_db
-<<<<<<< HEAD
 from management_app.views.utils import download_file, upload_file, remove_upload_file, get_upload_filepath, insert_log, convert_local_timezone
-=======
-from management_app.views.utils import download_file, upload_file, remove_upload_file, get_upload_filepath, insert_log
->>>>>>> f7f4dc2221f5bbc9cdb3ab359c824e8125e2bbb4
 from management_app.views.points import calculate_teaching_point_val, update_yearly_ending_balance
 
 
