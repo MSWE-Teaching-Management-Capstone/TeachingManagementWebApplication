@@ -65,37 +65,6 @@ def offerings():
 @courses.route('/catalog', methods=['GET'])
 @login_required
 def catalog():
-    # # Initial courses table: parse input file and insert data into db only for the first time
-    # db = get_db()
-
-    # df = pd.read_excel(get_upload_filepath("courses.xlsx"), sheet_name=1)
-    # rows = df.values.tolist()
-    # for row in rows:
-    #     # course_title_id column may be like "CS 143B" or "CS143B" -> all convert to "CS143B"
-    #     course_title_id = row[0].strip().replace(' ', '')
-
-    #     course_title = row[1].strip()
-    #     units = row[2]            
-    #     course_level = row[3].strip()
-
-    #     # combine_with column may be like "CS 143B" or "CS143B" -> all convert to "CS143B"
-    #     if pd.isna(row[4]):
-    #         combine_with = None
-    #     else:            
-    #         combine_with = str(row[4]).strip().replace(' ', '')
-        
-
-    #     db.execute(
-    #         'INSERT INTO courses (course_title_id, course_title, units, course_level, combine_with)'
-    #         ' VALUES (?, ?, ?, ?, ?)',
-    #         (course_title_id, course_title, units, course_level, combine_with)
-    #     )
-    #     db.commit()
-
-
-    # TODO: show "combine_with" column in the front end so that admin will remember to edit it if he needs to
-    # TODO: check: the "unit" column of the courses file only has single values (in the unit column, I won’t get values like 2-4 or 4+2), if not: generate warning and reject add/edit
-
     db = get_db()
     courses = db.execute('SELECT * FROM courses').fetchall()
 
