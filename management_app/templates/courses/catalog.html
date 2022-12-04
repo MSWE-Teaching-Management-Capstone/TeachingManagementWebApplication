@@ -35,6 +35,7 @@
       <th scope="col">Title</th>
       <th scope="col">Level</th>
       <th scope="col">Units</th>
+      <th scope="col">Combine With</th>
       <th scope="col"></th>
     </tr>
   </thead>
@@ -45,6 +46,11 @@
         <td>{{ course['course_title'] }}</td>
         <td>{{ course['course_level'] }}</td>
         <td>{{ course['units'] }}</td>
+        {% if course['combine_with']== None %}
+          <td> - </td>
+        {% else %}
+          <td>{{ course['combine_with'] }}</td>
+        {% endif %}     
         <td>
           <div class="dropdown d-grid justify-content-end">
             <button class="btn btn-secondary fw-bold" type="button" data-bs-toggle="dropdown" aria-expanded="false">⋮</button>
