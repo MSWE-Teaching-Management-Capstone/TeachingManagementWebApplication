@@ -2,14 +2,12 @@ from flask import Blueprint, Response, redirect, render_template, url_for, reque
 from werkzeug.utils import secure_filename
 import pandas as pd
 from datetime import date
-import re
+import re, openpyxl, os
 
 from management_app.views.auth import login_required
 from management_app.db import get_db
-from management_app.views.utils import download_file, upload_file, remove_upload_file, get_upload_filepath, insert_log, convert_local_timezone
+from management_app.views.utils import download_file, upload_file, remove_upload_file, get_upload_filepath, insert_log, convert_local_timezone, BASE_DIR, DOWNLOAD_FOLDER
 from management_app.views.points import calculate_teaching_point_val, update_yearly_ending_balance, get_latest_academic_year
-
-
 
 courses = Blueprint('courses', __name__, url_prefix='/courses')
 
@@ -59,26 +57,45 @@ def offerings():
         return render_template('courses/offerings.html', courses=courses, year_options=year_options, upload_time=upload_time)
 
 
-
-
-
 @courses.route('/catalog', methods=['GET'])
 @login_required
 def catalog():
-    db = get_db()
+    db = get_db()    
     courses = db.execute('SELECT * FROM courses').fetchall()
-
     return render_template('courses/catalog.html', courses=courses)
 
 
 @courses.route('/data-templates/<filename>', methods=['GET'])
 @login_required
 def download_template(filename):
+    db = get_db()
+    res = db.execute('SELECT COUNT(*) AS cnt FROM scheduled_teaching').fetchone()
 
-    # TODO: do template Prefill: 
-    # Schedule_teaching template prepopulate: year, quarter, usename, ucinetid, 
-        # course_type： Lec, course_sec: A (each prodessor 3 rows: fall, winter, spring)
-    # courses template: no need to prepopulate
+    # Prepopulate schedule_teaching template after the first time upload
+    # Should include: year, quarter, ucinetid, course_sec
+    # Each prodessor has 3 rows: fall, winter, spring
+    if res["cnt"] != 0:
+        # get the latest academic year from scheduled_teaching
+        year = db.execute(
+            'SELECT DISTINCT year FROM scheduled_teaching ORDER BY year DESC LIMIT 1'
+        ).fetchone()['year']
+
+        ucinetids = get_ucinetid()
+        rows_data = []
+        for ucinetid in ucinetids:
+            rows_data.append([year, "Fall", ucinetid, "", "A", "", ""])
+            rows_data.append([year+1, "Winter", ucinetid, "", "A", "", ""])
+            rows_data.append([year+1, "Spring", ucinetid, "", "A", "", ""])
+
+        df1 = pd.DataFrame([["Scheduled_teaching", "quarter", "1 (Fall), 2 (Winter), 3 (Spring), 4 (Summer)"], ["", "course_title_id", "CS143B"], ["", "course_sec", "A"], ["", "num_of_enrollment", "180"], ["", "offload_or_recall_flag", "1 for \"offload / recall\" or 0"]], 
+            columns=[" ", "column name", "column values"])
+
+        df2 = pd.DataFrame(rows_data,
+            columns=["year", "quarter", "user_UCINetID",	"course_title_id", "course_sec", "num_of_enrollment", "offload_or_recall_flag"])    
+
+        with pd.ExcelWriter(os.path.join(BASE_DIR, DOWNLOAD_FOLDER, 'scheduled_teaching.xlsx'), mode='w') as writer:  
+            df1.to_excel(writer, sheet_name='Examples for column value', index=False)
+            df2.to_excel(writer, sheet_name='Scheduled_teaching', index=False)
 
     if request.method == 'GET':
         return download_file(filename)
@@ -98,6 +115,7 @@ def upload_user_file():
         rows = df.values.tolist()
         rows_dict = {}
         user_id_and_academic_year_set = set()
+        offering_tmp = []
         for row in rows:
             year = row[0]
             quarter = row[1]
@@ -127,7 +145,11 @@ def upload_user_file():
                 remove_upload_file(file)                    
                 return redirect(url_for('courses.offerings'))
 
-            insert_or_update_scheduled_teaching_for_each_user(user_UCINetID_list, num_of_enrollment, user_id_and_academic_year_set, academic_year, combine_with, rows_dict, course_title_id, year, quarter, course_sec, offload_or_recall_flag, num_of_co_taught)            
+            offering_tmp.append({"user_UCINetID_list": user_UCINetID_list, "num_of_enrollment": num_of_enrollment, "user_id_and_academic_year_set": user_id_and_academic_year_set, "academic_year": academic_year, "combine_with": combine_with, "rows_dict": rows_dict, "course_title_id": course_title_id, "year": year, "quarter": quarter, "course_sec": course_sec, "offload_or_recall_flag": offload_or_recall_flag, "num_of_co_taught": num_of_co_taught})
+        
+        # insert or update only when the file is all correct
+        for row_dict in offering_tmp:
+            insert_or_update_scheduled_teaching_for_each_user(row_dict["user_UCINetID_list"], row_dict["num_of_enrollment"], row_dict["user_id_and_academic_year_set"], row_dict["academic_year"], row_dict["combine_with"], row_dict["rows_dict"], row_dict["course_title_id"], row_dict["year"], row_dict["quarter"], row_dict["course_sec"], row_dict["offload_or_recall_flag"], row_dict["num_of_co_taught"])
 
         owner = 'Admin: ' + g.user['user_name']
         insert_log(owner, None, None, "Upload scheduled teaching file")
@@ -175,7 +197,6 @@ def create_offering():
         rows_dict = {}
         insert_or_update_scheduled_teaching_for_each_user(user_UCINetID_list, num_of_enrollment, user_id_and_academic_year_set, academic_year, combine_with, rows_dict, course_title_id, year, quarter, course_sec, offload_or_recall_flag, num_of_co_taught)
 
-
         owner = 'Admin: ' + g.user['user_name']
         insert_log(owner, user_id, None, "Add scheduled teaching")
         flash('Add scheduled teaching data successfully!', 'success')
@@ -183,8 +204,8 @@ def create_offering():
         # rules #5: Combined grad/undergraduate classes
         calculate_combined_classes_and_update_scheduled_teaching(rows_dict)        
 
-        # for pair in user_id_and_academic_year_set:
-        #     update_yearly_ending_balance(pair[0], pair[1])
+        for pair in user_id_and_academic_year_set:
+            update_yearly_ending_balance(pair[0], pair[1])
 
         return redirect(url_for('courses.offerings'))
     return render_template('courses/create-offering.html', ucinetid_options=ucinetid_options)
@@ -216,6 +237,9 @@ def update_offering(user_id, year, quarter, course_title_id, course_sec):
         insert_log(owner, user_id, None, "Edit scheduled teaching")
         flash('Edit scheduled teaching data successfully!', 'success')
 
+        academic_year = get_academic_year(year, quarter)
+        update_yearly_ending_balance(user_id, academic_year)
+
         return redirect(url_for('courses.offerings'))
     return render_template('courses/edit-offering.html', course=course)
 
@@ -234,6 +258,9 @@ def delete_offering(user_id, year, quarter, course_title_id, course_sec):
     owner = 'Admin: ' + g.user['user_name']
     insert_log(owner, user_id, None, "Delete scheduled teaching")
     flash('Delete scheduled teaching data successfully!', 'success')
+
+    academic_year = get_academic_year(year, quarter)
+    update_yearly_ending_balance(user_id, academic_year)
 
     return redirect(url_for('courses.offerings'))
 
