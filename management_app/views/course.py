@@ -69,11 +69,12 @@ def catalog():
 @login_required
 def download_template(filename):
     db = get_db()
-    res = db.execute('SELECT COUNT(*) FROM scheduled_teaching').fetchone()
+    res = db.execute('SELECT COUNT(*) AS cnt FROM scheduled_teaching').fetchone()
+
     # Prepopulate schedule_teaching template after the first time upload
     # Should include: year, quarter, ucinetid, course_sec
     # Each prodessor has 3 rows: fall, winter, spring
-    if res != 0:
+    if res["cnt"] != 0:
         # get the latest academic year from scheduled_teaching
         year = db.execute(
             'SELECT DISTINCT year FROM scheduled_teaching ORDER BY year DESC LIMIT 1'

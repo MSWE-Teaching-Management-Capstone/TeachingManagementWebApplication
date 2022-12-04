@@ -36,3 +36,5 @@ htmlcov/
 !management_app/static/upload_files
 management_app/static/upload_files/*
 !management_app/static/upload_files/upload.md
+
+management_app/static/data_templates/*

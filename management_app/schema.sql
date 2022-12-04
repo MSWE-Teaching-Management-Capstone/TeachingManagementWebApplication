@@ -305,4 +305,9 @@ VALUES
   ('ICS290', 'ENTREPRENEURSHIP', 4, 'Grad', null),
   ('ICS398A', 'TEACHING ASSISTANT TRAINING SEMINAR', 2, 'Grad', null),
   ('ICS398B', 'ADVANCED TEACHING ASSISTANT SEMINAR', 4, 'Grad', null),
-  ('ICS399', 'UNIVERSITY TEACHING', 4, 'Grad', null);
+  ('ICS399', 'UNIVERSITY TEACHING', 4, 'Grad', null),
+  ('CS 199', 'INDEPENDENT STUDY', 2, 'Grad', null),
+  ('CS 260S', 'SEMINAR', 1, 'Grad', null),
+  ('STATS 170A', 'Project in Data Science I', 4, 'Undergrad', null),
+  ('STATS 170B', 'Project in Data Science II', 4, 'Undergrad', null);
+  
