@@ -6,13 +6,10 @@ import re, openpyxl, os
 
 from management_app.views.auth import login_required
 from management_app.db import get_db
-from management_app.views.utils import download_file, upload_file, remove_upload_file, get_upload_filepath, insert_log, convert_local_timezone
+from management_app.views.utils import download_file, upload_file, remove_upload_file, get_upload_filepath, insert_log, convert_local_timezone, BASE_DIR, DOWNLOAD_FOLDER
 from management_app.views.points import calculate_teaching_point_val, update_yearly_ending_balance, get_latest_academic_year
 
 courses = Blueprint('courses', __name__, url_prefix='/courses')
-
-BASE_DIR = os.path.realpath(os.path.join(os.path.dirname(__file__), '..'))
-DOWNLOAD_FOLDER = 'static/data_templates'
 
 @courses.route('/offerings', methods=['GET'])
 @login_required
