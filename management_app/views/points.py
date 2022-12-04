@@ -133,7 +133,6 @@ def get_yearly_teaching_points(user_id, start_year):
     return 0 if res['total'] is None else res['total']
 
 def get_grad_mentoring_points(grad_count):
-    # TODO/Note: point per grad student and extra points are temporarily hard-coded
     grad_points = grad_count * 0.125
     if grad_points >= 0.5:
         grad_points = 0.5
