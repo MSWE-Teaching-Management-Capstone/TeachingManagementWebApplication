@@ -1,13 +1,13 @@
 import pandas as pd
-import traceback
+import os
 from flask import Blueprint, render_template, request, redirect, url_for, flash, g
 from werkzeug.utils import secure_filename
 from datetime import datetime
 
 from management_app.db import get_db
 from management_app.views.auth import login_required
-from management_app.views.utils import download_file, upload_file, remove_upload_file, get_upload_filepath, insert_log, convert_local_timezone
-from management_app.views.points import calculate_yearly_ending_balance, get_faculty_roles_credit_due, update_yearly_ending_balance, get_yearly_teaching_points, get_grad_mentoring_points, get_yearly_exception_points
+from management_app.views.utils import download_file, upload_file, remove_upload_file, get_upload_filepath, insert_log, convert_local_timezone, BASE_DIR, DOWNLOAD_FOLDER
+from management_app.views.points import calculate_yearly_ending_balance, get_faculty_roles_credit_due, update_yearly_ending_balance, get_yearly_teaching_points, get_grad_mentoring_points, get_yearly_exception_points, get_latest_academic_year
 
 faculty = Blueprint('faculty', __name__, url_prefix='/faculty')
 
@@ -74,7 +74,38 @@ def point_breakdown(id):
 @login_required
 def download_template(filename):
     if request.method == 'GET':
-        # TODO: pre-populate data for the 2nd download
+        # Pre-populate data for the 2nd download for faculty_point_info template
+        if filename == 'professors_point_info.xlsx':
+            db = get_db()
+            res = db.execute(
+                """SELECT users.user_name, users.user_ucinetid
+                    FROM users
+                    JOIN faculty_status
+                    ON faculty_status.user_id = users.user_id
+                    WHERE faculty_status.active_status = 1 AND faculty_status.role != 'staff'
+                """
+            ).fetchall()
+            latest_year = get_latest_academic_year()
+
+            # pre-populate next academic year, faculty name, faculty ucinetid for active faculty users
+            if latest_year is not None and res is not None:
+                next_year = latest_year+1
+                rows_data = []
+                for user in res:
+                    rows_data.append([next_year, user['user_name'], user['user_ucinetid'], '', ''])
+
+                df1 = pd.DataFrame(
+                    [['professors_point_info', 'year', '2022'], ['', 'user_name', 'Jessica Wong'], ['', 'user_UCINetID', 'Jen123'], ['', 'grad_count', '10.5'], ['', 'grad_students (students name)', 'Johnny Wang, Nacy Yang, Jassica W']],
+                    columns=[' ', 'column name', 'column values']
+                )
+                df2 = pd.DataFrame(
+                    rows_data,
+                    columns=['year','user_name','user_UCINetID','grad_count','grad_students (students name)']
+                )
+
+                with pd.ExcelWriter(os.path.join(BASE_DIR, DOWNLOAD_FOLDER, 'professors_point_info.xlsx'), mode='w') as writer:
+                    df1.to_excel(writer, sheet_name='Examples for column value', index=False)
+                    df2.to_excel(writer, sheet_name='Professors_point_info', index=False)
         return download_file(filename)
 
 @faculty.route('/upload/<template>', methods=['POST'])
