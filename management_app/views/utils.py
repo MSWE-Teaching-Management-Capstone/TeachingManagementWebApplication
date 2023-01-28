@@ -39,24 +39,11 @@ def remove_upload_file(file):
     print('Remove {} successfully'.format(filename))
     return
 
-
-# Duplicate here to avoid circular import error
 def get_exist_user(user_ucinetid):
     db = get_db()
     return db.execute(
         'SELECT * FROM users WHERE user_ucinetid = ?', (user_ucinetid,)
     ).fetchone()
-
-
-def check_admin(net_id):
-    db = get_db()
-
-    res = db.execute(
-        'SELECT admin FROM users WHERE user_ucinetid = ?', (net_id,)
-    ).fetchone()[0]
-
-    return True if res == 1 else False
-
 
 def insert_log(owner: str, user_id: int = None, exception_id: int = None, log_category: str = None):
     db = get_db()

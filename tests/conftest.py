@@ -1,8 +1,7 @@
 import os
 import tempfile
-from contextlib import contextmanager
-
 import pytest
+from contextlib import contextmanager
 from flask import template_rendered
 
 from management_app import create_app
@@ -43,10 +42,13 @@ class AuthActions(object):
 
     def login(self, **kwargs):
         with self._client.session_transaction() as session:
-            session['google_id'] = ''
-            session['name'] = ''
+            session['google_id'] = 'google_id'
+            session['domain'] = 'uci.edu'
             for key in kwargs:
                 session[key] = kwargs[key]
+
+    def logout(self):
+        return self._client.get('/auth/logout')
 
 @pytest.fixture
 def auth(client):

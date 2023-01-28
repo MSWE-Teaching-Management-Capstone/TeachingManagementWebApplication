@@ -6,7 +6,7 @@ from datetime import datetime
 
 from management_app.db import get_db
 from management_app.views.auth import login_required
-from management_app.views.utils import download_file, upload_file, remove_upload_file, get_upload_filepath, insert_log, convert_local_timezone, BASE_DIR, DOWNLOAD_FOLDER
+from management_app.views.utils import download_file, upload_file, remove_upload_file, get_upload_filepath, insert_log, convert_local_timezone, BASE_DIR, DOWNLOAD_FOLDER, get_exist_user
 from management_app.views.points import calculate_yearly_ending_balance, get_faculty_roles_credit_due, update_yearly_ending_balance, get_yearly_teaching_points, get_grad_mentoring_points, get_yearly_exception_points, get_latest_academic_year
 
 faculty = Blueprint('faculty', __name__, url_prefix='/faculty')
@@ -440,12 +440,6 @@ def process_professors_point_file(file_path, sheet__index, sheet__index_name):
     insert_log(owner, None, None, 'Upload professors point spreadsheet')
     flash('Upload professors point info data succesfully!', 'success')
     return
-
-def get_exist_user(user_ucinetid):
-    db = get_db()
-    return db.execute(
-        'SELECT * FROM users WHERE user_ucinetid = ?', (user_ucinetid,)
-    ).fetchone()
 
 def get_user_yearly_status(user_id, year):
     # Note: year comes from professor_point_info table, it represents the start of an an academic year
