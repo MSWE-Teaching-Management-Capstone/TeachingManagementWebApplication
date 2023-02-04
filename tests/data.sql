@@ -7,7 +7,7 @@ VALUES
 
 INSERT INTO faculty_status (user_id, start_year, end_year, active_status, role)
 VALUES
-  (1, 2022, null, 1, 'tenured pot'),
+  (1, 2020, null, 1, 'tenured pot'),
   (2, 2022, null, 1, 'assistant professor (2nd+ year)'),
   (3, 2020, 2021, 0, 'tenured research professor');
 
@@ -15,14 +15,6 @@ INSERT INTO faculty_point_info (user_id, year, previous_balance, ending_balance,
 VALUES
   (1, 2022, 2, 1.5, 6.5, 0, null),
   (2, 2022, 0.125, -0.625, 2.5, 2, 'Grad Student 1,Grad Student 2');
-
-INSERT INTO courses (course_title_id, course_title, units, course_level, combine_with)
-VALUES
-  ('ICS51', 'Introductory Computer Organization', 6, 'Undergrad', null),
-  ('ICS53', 'Principles in System Design', 4, 'Undergrad', null),
-  ('ICS80', 'Entrepreneurship', 2, 'Undergrad', null),
-  ('ICS193', 'Tutoring in ICS', 2, 'Undergrad', null),
-  ('CS234', 'Advanced Networks', 4, 'Grad', null);
 
 INSERT INTO scheduled_teaching (user_id, year, quarter, course_title_id, course_sec, enrollment, offload_or_recall_flag, teaching_point_val)
 VALUES

@@ -109,11 +109,15 @@ python -m pytest
 
 `Pytest` will collect the files name starting `test_` under tests folder.
 
-## Troubleshooting
-- TBD
+To run test suites in only one test file, use the command below then run that file under tests folder:
+```shell
+python -m pytest tests/test_file_name
+```
 
-## Project Layout
-- TBD; we can add the layout later, but currently, we can look into the files directly
+We use py-cov plugin to run the unit test coverage report on the command line. For generating different format of report, please refer to [py-cov document](https://pytest-cov.readthedocs.io/en/latest/).
+```shell
+python -m pytest --cov=management_app
+```
 
 ## Reference
 - https://plainenglish.io/blog/flask-crud-application-using-mvc-architecture

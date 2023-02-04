@@ -1,15 +1,15 @@
 import os
 import pathlib
 import functools
-
 import requests
+import google.auth.transport.requests
 from werkzeug.exceptions import abort
 from flask import flash, session, redirect, request, render_template, Blueprint, url_for, g
-from management_app.views.utils import get_exist_user, check_admin
 from google.oauth2 import id_token
 from google_auth_oauthlib.flow import Flow
 from pip._vendor import cachecontrol
-import google.auth.transport.requests
+
+from management_app.views.utils import get_exist_user
 
 auth = Blueprint('auth', __name__, url_prefix='/auth')
 
@@ -20,11 +20,9 @@ client_secrets_file = os.path.join(pathlib.Path(__file__).parent.parent, "client
 # Create the session flow
 flow = Flow.from_client_secrets_file(
     client_secrets_file=client_secrets_file,
-    scopes=["https://www.googleapis.com/auth/userinfo.profile", "https://www.googleapis.com/auth/userinfo.email",
-            "openid"],
+    scopes=["https://www.googleapis.com/auth/userinfo.profile", "https://www.googleapis.com/auth/userinfo.email", "openid"],
     redirect_uri="http://127.0.0.1:5000/auth/login_callback"
 )
-
 
 # Wrapper for login session checkup
 def login_required(view):
@@ -32,16 +30,14 @@ def login_required(view):
     def wrapped_view(**kwargs):
         if "google_id" not in session:
             return redirect(url_for('auth.index'))
-
-        return view(**kwargs)
+        else:
+            return view(**kwargs)
 
     return wrapped_view
-
 
 @auth.route("/")
 def index():
     return render_template("login.html")
-
 
 @auth.route("/login")
 def login():
@@ -49,12 +45,10 @@ def login():
     session["state"] = state
     return redirect(authorization_url)
 
-
 @auth.route("/logout")
 def logout():
     session.clear()
     return redirect(url_for('auth.index'))
-
 
 @auth.route("/login_callback")
 def login_callback():
@@ -75,8 +69,6 @@ def login_callback():
     )
 
     session["google_id"] = id_info.get("sub")
-    session["name"] = id_info.get("name")
-    session["email"] = id_info.get("email")
     session["domain"] = id_info.get("hd", "-1")
     session['net_id'] = id_info.get('email').split(sep='@')[0]
 
@@ -92,14 +84,12 @@ def login_callback():
         flash("Alert: You do not have the permission to access the system.")
         return redirect(url_for('auth.index'))
 
-    session['is_admin'] = check_admin(session['net_id'])
     return redirect(url_for('auth.redirect_to_homepage'))
-
 
 @auth.route("/redirect_to_homepage")
 @login_required
 def redirect_to_homepage():
-    if session['is_admin']:
+    if g.user['admin']:
         return redirect('/faculty/points')
     else:
         return redirect('/faculty')
@@ -112,5 +102,4 @@ def load_logged_in_user():
         g.user = None
     elif get_exist_user(user_net_id):
         g.user = get_exist_user(user_net_id)
-        g.is_admin = check_admin(user_net_id)
     return
