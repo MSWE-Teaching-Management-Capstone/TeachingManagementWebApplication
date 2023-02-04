@@ -231,7 +231,7 @@ def update_points(id, year):
                     insert_exception(id, year, exception_category, exception_message, points)
 
             # Update grad_count, grad_students firstly
-            update_faculty_grad_info(id, year, grad_count, grad_students)
+            update_faculty_grad_info(id, year, float(grad_count), grad_students)
 
             # Update total ending_point finally
             update_yearly_ending_balance(id, year)
@@ -239,8 +239,9 @@ def update_points(id, year):
             owner = 'Admin: ' + g.user['user_name']
             insert_log(owner, id, None, 'Update faculty member points')
         except Exception as e:
+            print(e)
             error = 'Failed to update. Please refresh and fill the correct info again.'
-
+        
         if error is not None:
             flash(error, 'error')
         else:
@@ -522,6 +523,7 @@ def get_all_faculty_point_info(year):
             })
     return faculties
 
+# Note: This is currently for active faculty members if no filter by year
 def get_all_faculty_members():
     members = []
     db = get_db()
@@ -659,7 +661,6 @@ def insert_users(user_name, user_email, user_ucinetid, is_admin):
         (user_name, user_email, user_ucinetid, is_admin)
     )
     db.commit()
-    return
 
 def insert_faculty_status(user_ucinetid, start_year, role, active_status):
     db = get_db()
@@ -671,7 +672,6 @@ def insert_faculty_status(user_ucinetid, start_year, role, active_status):
         (user_id, start_year, role, active_status)
     )
     db.commit()
-    return
 
 def insert_faculty_point_info(user_id, year, previous_balance, grad_count, grad_students, credit_due):
     ending_balance = calculate_yearly_ending_balance(user_id, year, grad_count, previous_balance, credit_due)
@@ -683,7 +683,6 @@ def insert_faculty_point_info(user_id, year, previous_balance, grad_count, grad_
         (user_id, year, previous_balance, ending_balance, credit_due, grad_count, grad_students)
     )
     db.commit()
-    return
 
 def insert_exception(user_id, year, exception_category, exception_message, points):
     db = get_db()
@@ -701,7 +700,6 @@ def insert_exception(user_id, year, exception_category, exception_message, point
     owner = 'Admin: ' + g.user['user_name']
     insert_log(owner, user_id, exception_id, log_category)
     db.commit()
-    return
 
 def update_users(name, email, ucinetid, user_id):
     db = get_db()
@@ -712,7 +710,6 @@ def update_users(name, email, ucinetid, user_id):
         (name, email, ucinetid, user_id)
     )
     db.commit()
-    return
 
 def update_faculty_role(user_id, start_year, cur_year, role):
     db = get_db()
@@ -734,7 +731,6 @@ def update_faculty_role(user_id, start_year, cur_year, role):
             (user_id, cur_year, 1, role)
         )
     db.commit()
-    return
 
 def update_faculty_status(user_id, start_year, cur_year, role, status):
     db = get_db()
@@ -760,7 +756,6 @@ def update_faculty_status(user_id, start_year, cur_year, role, status):
     status_msg = 'Active' if status == 1 else 'Inactive'
     owner = 'Admin: ' + g.user['user_name']
     insert_log(owner, user_id, None, 'Update faculty member status to "{}"'.format(status_msg))
-    return
 
 def update_faculty_grad_info(user_id, year, grad_count, grad_students):
     db = get_db()
@@ -770,7 +765,6 @@ def update_faculty_grad_info(user_id, year, grad_count, grad_students):
         (grad_count, grad_students, user_id, year)
     )
     db.commit()
-    return
 
 def get_upload_points_latest_time():
     db = get_db()
