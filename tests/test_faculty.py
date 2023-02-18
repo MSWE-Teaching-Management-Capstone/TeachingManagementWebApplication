@@ -8,10 +8,11 @@ def test_download_user_file(client, auth):
     response = client.get('/faculty/data-templates/users.xlsx')
     assert response.status_code == 200
 
-def test_download_faculty_point_file(client, auth):
-    auth.login(email='tpadmin@uci.edu', net_id='tpadmin')
-    response = client.get('/faculty/data-templates/professors_point_info.xlsx')
-    assert response.status_code == 200
+# Temporary comment out, found an issue this will override the real template file
+# def test_download_faculty_point_file(client, auth, app):
+#     auth.login(email='tpadmin@uci.edu', net_id='tpadmin')
+#     response = client.get('/faculty/data-templates/professors_point_info.xlsx')
+#     assert response.status_code == 200
 
 def test_download_incorrect_file(client, auth):
     auth.login(email='tpadmin@uci.edu', net_id='tpadmin')
