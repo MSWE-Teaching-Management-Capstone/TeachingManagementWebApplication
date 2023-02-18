@@ -1,10 +1,16 @@
 from datetime import datetime
 from flask import g
 from management_app.db import get_db
+from management_app.views.faculty import insert_faculty_point_info, insert_faculty_status, insert_users
 
-def test_download_correct_file(client, auth):
+def test_download_user_file(client, auth):
     auth.login(email='tpadmin@uci.edu', net_id='tpadmin')
     response = client.get('/faculty/data-templates/users.xlsx')
+    assert response.status_code == 200
+
+def test_download_faculty_point_file(client, auth):
+    auth.login(email='tpadmin@uci.edu', net_id='tpadmin')
+    response = client.get('/faculty/data-templates/professors_point_info.xlsx')
     assert response.status_code == 200
 
 def test_download_incorrect_file(client, auth):
@@ -46,6 +52,17 @@ def test_create_member(client, auth, app):
 
         log = db.execute("SELECT * FROM logs WHERE owner = 'Admin: Test Professor Admin'").fetchone()
         assert log['log_category'] == 'Add new faculty member'
+
+def test_create_duplicated_member(client, auth, app):
+    auth.login(email='tpadmin@uci.edu', net_id='tpadmin')
+    client.get('/faculty/create-member')
+    client.post('/faculty/create-member', data={'name': 'New Created', 'ucinetid': 'newuser', 'email': 'newuser@uci.edu', 'role': 'assistant POT (1st year)', 'status': 1})
+    response = client.post('/faculty/create-member', data={'name': 'New Created', 'ucinetid': 'newuser', 'email': 'newuser@uci.edu', 'role': 'assistant POT (1st year)', 'status': 1})
+    assert response.status_code != 200
+    with app.app_context():
+        db = get_db()
+        users = db.execute("SELECT * FROM users").fetchall()
+        assert len(users) == 5
 
 def test_update_member(client, auth, app):
     auth.login(email='tpadmin@uci.edu', net_id='tpadmin')
@@ -141,3 +158,62 @@ def test_regular_faculty_login_dashboard(client, auth):
         client.get('/auth/login')
         assert g.user['admin'] == 0
         assert client.get('/faculty', follow_redirects=True).status_code == 200
+
+def test_update_faculty_status(client, auth, app):
+    auth.login(email='tprofessor@uci.edu', net_id='tprofessor')
+    with client:
+        client.get('/auth/login')
+        insert_faculty_point_info(1, 2023, 1.5, 0, "", 2.5)
+    with app.app_context():
+        db = get_db()
+        res = db.execute('SELECT * FROM faculty_point_info WHERE user_id = 1 AND year = 2023').fetchone()
+        assert res['year'] == 2023
+        assert res['previous_balance'] == 1.5
+
+def test_insert_faculty_status(client, auth, app):
+    auth.login(email='tprofessor@uci.edu', net_id='tprofessor')
+    with client:
+        client.get('/auth/login')
+        insert_faculty_status('tdprof', 2023, 'tenured research professor', 1)
+    with app.app_context():
+        db = get_db()
+        res1 = db.execute('SELECT * FROM faculty_status WHERE user_id = 3 AND start_year = 2023').fetchone()
+        assert res1['active_status'] == 1
+        assert res1['start_year'] == 2023
+
+        res2 = db.execute('SELECT * FROM faculty_status WHERE user_id = 3 AND start_year = 2020').fetchone()
+        assert res2['active_status'] == 0
+        assert res2['start_year'] == 2020
+        assert res2['end_year'] == 2021
+
+def test_insert_users(client, auth, app):
+    auth.login(email='tprofessor@uci.edu', net_id='tprofessor')
+    with client:
+        client.get('/auth/login')
+        insert_users('New User', 'new@uci.edu', 'new1', 0)
+    with app.app_context():
+        db = get_db()
+        res = db.execute('SELECT * FROM users WHERE user_ucinetid = "new1"').fetchone()
+        assert res['user_id'] == 5
+        assert res['user_name'] == 'New User'
+        assert res['admin'] == 0
+
+def test_upload_user(client, auth, app):
+    auth.login(email='tprofessor@uci.edu', net_id='tprofessor')
+    file = 'tests/resource/2023 Users Data.xlsx'
+    data = { 'facultyTemplate': (open(file, 'rb'), file) }
+    client.post('/faculty/upload/addUsers', data=data)
+    with app.app_context():
+        db = get_db()
+        res = db.execute('SELECT * FROM users').fetchall()
+        assert len(res) == 6
+
+def test_upload_faculty_point(client, auth, app):
+    auth.login(email='tprofessor@uci.edu', net_id='tprofessor')
+    file = 'tests/resource/2023 Professor Point Data.xlsx'
+    data = { 'facultyTemplate': (open(file, 'rb'), file) }
+    client.post('/faculty/upload/addProfessors', data=data)
+    with app.app_context():
+        db = get_db()
+        res = db.execute('SELECT * FROM faculty_point_info WHERE year = 2023').fetchall()
+        assert len(res) == 2

@@ -1,4 +1,4 @@
-from flask import Blueprint, Response, render_template, flash, make_response, redirect, url_for, session, request, g
+from flask import Blueprint, Response, render_template, flash, make_response, redirect, url_for, request, g
 
 from management_app.db import get_db
 from management_app.views.auth import login_required
@@ -14,7 +14,7 @@ def index():
         add_admin_status(request.form['user-select'])
 
     users, admins = get_users_and_admins()
-    current_user = next(admin for admin in admins if admin['user_email'] == session['email'])
+    current_user = next(admin for admin in admins if admin['user_email'] == g.user['user_email'])
 
     return render_template(
         'settings/index.html',
