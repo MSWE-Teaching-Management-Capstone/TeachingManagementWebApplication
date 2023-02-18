@@ -119,6 +119,11 @@ We use py-cov plugin to run the unit test coverage report on the command line. F
 python -m pytest --cov=management_app
 ```
 
+If you want to check terminal report with missing line numbers:
+```shell
+python -m pytest --cov-report term-missing --cov=management_app
+```
+
 ## Reference
 - https://plainenglish.io/blog/flask-crud-application-using-mvc-architecture
 - https://flask.palletsprojects.com/en/2.2.x/tutorial/layout/
