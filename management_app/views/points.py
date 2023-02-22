@@ -55,7 +55,7 @@ def calculate_teaching_point_val(course_title_id, num_of_enrollment, offload_or_
             flash(warning_msg, 'warning')
         return 0
     # rules #2
-    elif num_of_enrollment < 8:
+    elif int(num_of_enrollment) < 8:
         return 0
     # rules #3
     # Cat 0 applies to 6 unit courses
@@ -96,9 +96,9 @@ def calculate_teaching_point_val(course_title_id, num_of_enrollment, offload_or_
         return earned_pnt
     # Cat 1-3 applies to 4 unit courses
     elif units == 4:
-        if (course_level == "Undergrad" and num_of_enrollment >= 200) or (course_level == "Grad" and num_of_enrollment >= 100):
+        if (course_level == "Undergrad" and int(num_of_enrollment) >= 200) or (course_level == "Grad" and int(num_of_enrollment) >= 100):
             return point_c1 / num_of_co_taught
-        elif (course_level == "Undergrad" and num_of_enrollment > 20 and num_of_enrollment <= 199) or (course_level == "Grad" and num_of_enrollment > 20 and num_of_enrollment <= 99):
+        elif (course_level == "Undergrad" and int(num_of_enrollment) > 20 and int(num_of_enrollment) <= 199) or (course_level == "Grad" and int(num_of_enrollment) > 20 and int(num_of_enrollment) <= 99):
             return point_c2 / num_of_co_taught      
         else:  # (course_level == "Undergrad" and num_of_enrollment <= 20) or (course_level == "Grad" and num_of_enrollment <= 20)
             return point_c3 / num_of_co_taught
