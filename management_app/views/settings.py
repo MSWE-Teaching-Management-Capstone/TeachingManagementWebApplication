@@ -105,7 +105,7 @@ def update_teaching_point_balances(rule_id):
     start_year = get_latest_academic_year()
 
     if rule_name.startswith('Role-'):
-        role = rule_name.removeprefix('Role-').lower()
+        role = rule_name[5:].lower()
         faculty = db.execute('SELECT user_id FROM faculty_status WHERE active_status IS TRUE AND role = ?', (role,)).fetchall()
 
         for user in faculty:

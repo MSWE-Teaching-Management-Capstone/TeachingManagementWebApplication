@@ -53,7 +53,7 @@ def offerings():
                 ' WHERE (year = ? AND quarter = 1) OR (year = ? AND quarter = 2) OR (year = ? AND quarter = 3)'
                 ' ORDER BY year DESC, quarter DESC, st.course_title_id', (y_start, y_end, y_end)
             ).fetchall()
-            
+
         return render_template('courses/offerings.html', courses=courses, year_options=year_options, upload_time=upload_time)
 
 

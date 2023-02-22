@@ -34,3 +34,7 @@ VALUES
 INSERT INTO logs (owner, user_id, exception_id, log_category)
 VALUES
   ('Test Professor Admin', 1, 1, 'exception');
+
+INSERT INTO courses (course_id, course_title_id, course_title, units, course_level, combine_with)
+VALUES
+  (9999, 'CS12222A', 'INTRODUCTION TO DATA MANAGEMENT', 4, 'Undergrad', null);
