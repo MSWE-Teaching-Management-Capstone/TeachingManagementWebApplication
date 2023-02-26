@@ -267,7 +267,7 @@ def delete_offering(user_id, year, quarter, course_title_id, course_sec):
 @courses.route('/catalog/add', methods=['GET', 'POST'])
 @login_required
 def add_course():
-    if request.method == 'POST':
+    if request.method == 'POST':        
         title_id = request.form['title-id'].strip().replace(' ', '')
         title = request.form['title']
         level = request.form['level']
@@ -275,14 +275,6 @@ def add_course():
         combine_with = request.form['combine-with'].strip().replace(' ', '')
 
         error = None
-        if title_id is None:
-            error = 'Course Title ID is required. '
-        if title is None:
-            error = 'Course Title is required. '
-        if level is None:
-            error = 'Course Level is required. '
-        if units is None:
-            error = 'Units is required. '
         if is_course_title_id_taken(title_id):
             error = 'Course Title ID is already taken. '
 
@@ -297,7 +289,7 @@ def add_course():
             db.commit()
             insert_log('Admin: ' + g.user['user_name'], None, None, f"Added new course ({title_id})")
             flash('Course added successfully!', 'success')
-        
+   
     return render_template('courses/add-course.html')
 
 @courses.route('/catalog/course/<int:id>/edit', methods=['GET', 'POST'])
@@ -313,26 +305,15 @@ def edit_course(id):
         units = request.form['units']
         combine_with = request.form['combine-with']
 
-        error = None
-        if title is None:
-            error = 'Course Title is required. '
-        if level is None:
-            error = 'Course Level is required. '
-        if units is None:
-            error = 'Units is required. '
-
-        if error is not None:
-            flash(error, 'error')
-        else:
-            db.execute("""
-                UPDATE courses
-                SET course_title = ?, course_level = ?, units = ?, combine_with = ?
-                WHERE course_id = ?
-            """, (title, level, units, combine_with, id))
-            db.commit()
-            update_teaching_point_balances(course['course_title_id'])
-            insert_log('Admin: ' + g.user['user_name'], None, None, f"Edited course ({course['course_title_id']})")
-            flash('Update successfully!', 'success')
+        db.execute("""
+            UPDATE courses
+            SET course_title = ?, course_level = ?, units = ?, combine_with = ?
+            WHERE course_id = ?
+        """, (title, level, units, combine_with, id))
+        db.commit()
+        update_teaching_point_balances(course['course_title_id'])
+        insert_log('Admin: ' + g.user['user_name'], None, None, f"Edited course ({course['course_title_id']})")
+        flash('Update successfully!', 'success')
 
     return render_template('courses/edit-course.html', course=course)
 
@@ -419,7 +400,7 @@ def is_valid_input(year, quarter, user_UCINetID_list, course_title_id, course_se
     elif re.match(r'[1-4]', str(quarter)) is None:
         col_name = "quarter"
     elif None in [re.match(r'[a-z]+', ucinetid) for ucinetid in user_UCINetID_list]:
-        col_name = "user_UCINetID"  
+        col_name = "user_UCINetID"
     elif re.match(r'[0-9A-Z]+', course_title_id) is None:
         col_name = "course_title_id"  
     elif re.match(r'[0-9A-Z]+', course_sec) is None:
