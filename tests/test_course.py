@@ -1,10 +1,11 @@
 from management_app.db import get_db
 from management_app.views.course import update_scheduled_teaching, calculate_combined_classes_and_update_scheduled_teaching
 
-def test_download_template(client, auth):
-    auth.login(email='tpadmin@uci.edu', net_id='tpadmin')
-    response = client.get('/courses/data-templates/scheduled_teaching.xlsx')
-    assert response.status_code == 200
+# Temporary comment due to this will override the real template file
+# def test_download_template(client, auth):
+#     auth.login(email='tpadmin@uci.edu', net_id='tpadmin')
+#     response = client.get('/courses/data-templates/scheduled_teaching.xlsx')
+#     assert response.status_code == 200
 
 def test_upload_user_file(client, auth, app):
     auth.login(email='tpadmin@uci.edu', net_id='tpadmin')
