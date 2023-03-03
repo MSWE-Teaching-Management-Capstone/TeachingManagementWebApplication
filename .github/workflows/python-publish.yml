@@ -9,9 +9,9 @@ name: Python Flask Package
 
 on:
   push:
-    branches: [ ci_action ]
+    branches: [ main ]
   pull_request:
-    branches: [ ci_action ]
+    branches: [ main ]
 
 jobs:
   build:
