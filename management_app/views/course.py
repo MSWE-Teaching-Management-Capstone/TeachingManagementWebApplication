@@ -1,8 +1,7 @@
-from flask import Blueprint, Response, redirect, render_template, url_for, request, flash, g
+from flask import Blueprint, redirect, render_template, url_for, request, flash, g
 from werkzeug.utils import secure_filename
 import pandas as pd
-from datetime import date
-import re, openpyxl, os
+import re, os
 
 from management_app.views.auth import login_required
 from management_app.db import get_db
@@ -11,48 +10,26 @@ from management_app.views.points import calculate_teaching_point_val, update_yea
 
 courses = Blueprint('courses', __name__, url_prefix='/courses')
 
+
 @courses.route('/offerings', methods=['GET'])
 @login_required
 def offerings():
     if request.method == 'GET':
         upload_time = get_latest_scheduled_teaching_upload_time()
-        db = get_db()        
-        year_options = []
+        db = get_db()
         courses = []       
         rows = db.execute(
             'SELECT DISTINCT year FROM scheduled_teaching ORDER BY year ASC'
-        ).fetchall()          
+        ).fetchall()
 
         if rows != []:
-            min_quarter = db.execute(
-            'SELECT DISTINCT quarter FROM scheduled_teaching WHERE year = ? ORDER BY quarter ASC', (rows[-1]['year'],)
-            ).fetchone()['quarter']           
-        
-            # generate year options
-            for row in rows:
-                year = row['year']
-                year_options.append(str(year) + '-' + str(year+1))
-
-            # if the biggest year don't have quarter 1, then this biggest year can't be the start of the year period
-            if min_quarter != '1':
-                year_options.pop()
+            year_options = generate_year_options(rows)            
 
             # todays_date = date.today()  # creating the date object of today's date        
             # y_start, y_end = todays_date.year, todays_date.year + 1
             year_selected = request.args.get('year')  # 2020-2021 (including: 2020 Fall(1) - 2021 Winter(2) & Spring(3))
-            if year_selected != None:
-                y_start = year_selected.split('-')[0]
-                y_end = year_selected.split('-')[1]
-            else:
-                y_start = year_options[-1].split('-')[0]
-                y_end = year_options[-1].split('-')[1]
-
-            courses = db.execute(
-                'SELECT year, quarter, user_name, st.course_title_id, course_sec, enrollment, st.user_id'
-                ' FROM scheduled_teaching st JOIN courses ON st.course_title_id = courses.course_title_id JOIN users ON st.user_id = users.user_id'
-                ' WHERE (year = ? AND quarter = 1) OR (year = ? AND quarter = 2) OR (year = ? AND quarter = 3)'
-                ' ORDER BY year DESC, quarter DESC, st.course_title_id', (y_start, y_end, y_end)
-            ).fetchall()
+            y_start, y_end = get_displayed_year_period(year_options, year_selected)
+            courses = get_displayed_courses(y_start, y_end)
 
         return render_template('courses/offerings.html', courses=courses, year_options=year_options, upload_time=upload_time)
 
@@ -68,36 +45,14 @@ def catalog():
 @courses.route('/data-templates/<filename>', methods=['GET'])
 @login_required
 def download_template(filename):
-    db = get_db()
-    res = db.execute('SELECT COUNT(*) AS cnt FROM scheduled_teaching').fetchone()
-
-    # Prepopulate schedule_teaching template after the first time upload
-    # Should include: year, quarter, ucinetid, course_sec
-    # Each prodessor has 3 rows: fall, winter, spring
-    if res["cnt"] != 0:
-        # get the latest academic year from scheduled_teaching
-        year = db.execute(
-            'SELECT DISTINCT year FROM scheduled_teaching ORDER BY year DESC LIMIT 1'
-        ).fetchone()['year']
-
-        ucinetids = get_ucinetid()
-        rows_data = []
-        for ucinetid in ucinetids:
-            rows_data.append([year, "Fall", ucinetid, "", "A", "", ""])
-            rows_data.append([year+1, "Winter", ucinetid, "", "A", "", ""])
-            rows_data.append([year+1, "Spring", ucinetid, "", "A", "", ""])
-
-        df1 = pd.DataFrame([["Scheduled_teaching", "quarter", "1 (Fall), 2 (Winter), 3 (Spring), 4 (Summer)"], ["", "course_title_id", "CS143B"], ["", "course_sec", "A"], ["", "num_of_enrollment", "180"], ["", "offload_or_recall_flag", "1 for \"offload / recall\" or 0"]], 
-            columns=[" ", "column name", "column values"])
-
-        df2 = pd.DataFrame(rows_data,
-            columns=["year", "quarter", "user_UCINetID",	"course_title_id", "course_sec", "num_of_enrollment", "offload_or_recall_flag"])    
-
-        with pd.ExcelWriter(os.path.join(BASE_DIR, DOWNLOAD_FOLDER, 'scheduled_teaching.xlsx'), mode='w') as writer:  
-            df1.to_excel(writer, sheet_name='Examples for column value', index=False)
-            df2.to_excel(writer, sheet_name='Scheduled_teaching', index=False)
-
     if request.method == 'GET':
+        db = get_db()
+        res = db.execute('SELECT COUNT(*) AS cnt FROM scheduled_teaching').fetchone()
+
+        # Prepopulate schedule_teaching template after the first time upload        
+        if res["cnt"] != 0:
+            prepopulate_schedule_teaching_template()
+            
         return download_file(filename)
 
 @courses.route('/upload', methods=['POST'])
@@ -560,3 +515,69 @@ def get_latest_scheduled_teaching_upload_time():
     if res is None:
         return ""
     return convert_local_timezone(res['created'])
+
+def prepopulate_schedule_teaching_template():
+    db = get_db()
+    # get the latest academic year from scheduled_teaching
+    year = db.execute(
+        'SELECT DISTINCT year FROM scheduled_teaching ORDER BY year DESC LIMIT 1'
+    ).fetchone()['year']
+
+    # Should include: year, quarter, ucinetid, course_sec
+    # Each prodessor has 3 rows: fall, winter, spring
+    ucinetids = get_ucinetid()
+    rows_data = []
+    for ucinetid in ucinetids:
+        rows_data.append([year, "Fall", ucinetid, "", "A", "", ""])
+        rows_data.append([year+1, "Winter", ucinetid, "", "A", "", ""])
+        rows_data.append([year+1, "Spring", ucinetid, "", "A", "", ""])
+
+    df1 = pd.DataFrame([["Scheduled_teaching", "quarter", "1 (Fall), 2 (Winter), 3 (Spring), 4 (Summer)"], ["", "course_title_id", "CS143B"], ["", "course_sec", "A"], ["", "num_of_enrollment", "180"], ["", "offload_or_recall_flag", "1 for \"offload / recall\" or 0"]], 
+        columns=[" ", "column name", "column values"])
+
+    df2 = pd.DataFrame(rows_data,
+        columns=["year", "quarter", "user_UCINetID",	"course_title_id", "course_sec", "num_of_enrollment", "offload_or_recall_flag"])    
+
+    with pd.ExcelWriter(os.path.join(BASE_DIR, DOWNLOAD_FOLDER, 'scheduled_teaching.xlsx'), mode='w') as writer:  
+        df1.to_excel(writer, sheet_name='Examples for column value', index=False)
+        df2.to_excel(writer, sheet_name='Scheduled_teaching', index=False)
+
+
+def generate_year_options(rows):
+    db = get_db()
+    min_quarter = db.execute(
+        'SELECT DISTINCT quarter FROM scheduled_teaching WHERE year = ? ORDER BY quarter ASC', (rows[-1]['year'],)
+    ).fetchone()['quarter']           
+
+    year_options = []
+    # generate year options
+    for row in rows:
+        year = row['year']
+        year_options.append(str(year) + '-' + str(year+1))
+
+    # if the biggest year don't have quarter 1, then this biggest year can't be the start of the year period
+    if min_quarter != '1':
+        year_options.pop()
+    return year_options
+
+
+def get_displayed_year_period(year_options, year_selected):
+    if year_selected != None:
+        y_start = year_selected.split('-')[0]
+        y_end = year_selected.split('-')[1]
+    else:
+        y_start = year_options[-1].split('-')[0]
+        y_end = year_options[-1].split('-')[1]
+    return y_start, y_end
+
+
+def get_displayed_courses(y_start, y_end):
+    db = get_db()
+    courses = db.execute(
+        'SELECT year, quarter, user_name, st.course_title_id, course_sec, enrollment, st.user_id'
+        ' FROM scheduled_teaching st JOIN courses ON st.course_title_id = courses.course_title_id JOIN users ON st.user_id = users.user_id'
+        ' WHERE (year = ? AND quarter = 1) OR (year = ? AND quarter = 2) OR (year = ? AND quarter = 3)'
+        ' ORDER BY year DESC, quarter DESC, st.course_title_id', (y_start, y_end, y_end)
+    ).fetchall()
+
+    return courses
