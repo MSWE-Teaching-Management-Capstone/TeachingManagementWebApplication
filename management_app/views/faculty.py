@@ -192,18 +192,14 @@ def update_points(id, year):
     faculty = {}
     exceptions = []
 
-    try:
-        profile = get_user_yearly_status(id, year)
-        faculty = {
-            'academic_year': year,
-            'member': get_faculty_member_info(id),
-            'point': get_faculty_yearly_point_info(id, year),
-            'role': profile['role']
-        }
-        exceptions = get_faculty_yearly_exceptions(id, year)
-    except Exception as e:
-        print(e)
-        error = 'User is not found'
+    profile = get_user_yearly_status(id, year)
+    faculty = {
+        'academic_year': year,
+        'member': get_faculty_member_info(id),
+        'point': get_faculty_yearly_point_info(id, year),
+        'role': profile['role']
+    }
+    exceptions = get_faculty_yearly_exceptions(id, year)
 
     if request.method == 'POST':
         try:

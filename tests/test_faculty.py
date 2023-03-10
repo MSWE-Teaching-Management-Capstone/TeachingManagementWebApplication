@@ -8,11 +8,14 @@ def test_download_user_file(client, auth):
     response = client.get('/faculty/data-templates/users.xlsx')
     assert response.status_code == 200
 
-# Temporary comment due to this will override the real template file
-# def test_download_faculty_point_file(client, auth, app):
-#     auth.login(email='tpadmin@uci.edu', net_id='tpadmin')
-#     response = client.get('/faculty/data-templates/professors_point_info.xlsx')
-#     assert response.status_code == 200
+# To avoid overriding the real template file, only test part of the download_faculty_point_file
+def test_download_faculty_point_file(client, auth, app):
+    auth.login(email='tpadmin@uci.edu', net_id='tpadmin')
+    with app.app_context():
+        db = get_db()
+        db.execute("DELETE FROM faculty_point_info")
+        response = client.get('/faculty/data-templates/professors_point_info.xlsx')
+        assert response.status_code == 200
 
 def test_download_incorrect_file(client, auth):
     auth.login(email='tpadmin@uci.edu', net_id='tpadmin')
@@ -54,6 +57,38 @@ def test_create_member(client, auth, app):
         log = db.execute("SELECT * FROM logs WHERE owner = 'Admin: Test Professor Admin'").fetchone()
         assert log['log_category'] == 'Add new faculty member'
 
+def test_invalid_input_for_create_member(client, auth, app):
+    auth.login(email='tpadmin@uci.edu', net_id='tpadmin')
+    assert client.get('/faculty/create-member').status_code == 200
+
+    # name is required
+    client.post('/faculty/create-member', data={'name': '', 'ucinetid': 'newuser', 'email': 'newuser@uci.edu', 'role': 'assistant POT (1st year)', 'status': 1})
+    with app.app_context():
+        db = get_db()
+        user = db.execute("SELECT * FROM users WHERE user_ucinetid = 'newuser'").fetchone()
+        assert user == None
+
+    # ucinetid is required
+    client.post('/faculty/create-member', data={'name': 'New User', 'ucinetid': '', 'email': 'newuser@uci.edu', 'role': 'assistant POT (1st year)', 'status': 1})
+    with app.app_context():
+        db = get_db()
+        user = db.execute("SELECT * FROM users WHERE user_ucinetid = 'newuser'").fetchone()
+        assert user == None
+
+    # email is required
+    client.post('/faculty/create-member', data={'name': 'New User', 'ucinetid': 'newuser', 'email': '', 'role': 'assistant POT (1st year)', 'status': 1})
+    with app.app_context():
+        db = get_db()
+        user = db.execute("SELECT * FROM users WHERE user_ucinetid = 'newuser'").fetchone()
+        assert user == None
+
+    # role is required
+    client.post('/faculty/create-member', data={'name': 'New User', 'ucinetid': 'newuser', 'email': 'newuser@uci.edu', 'role': '', 'status': 1})
+    with app.app_context():
+        db = get_db()
+        user = db.execute("SELECT * FROM users WHERE user_ucinetid = 'newuser'").fetchone()
+        assert user == None
+
 def test_create_duplicated_member(client, auth, app):
     auth.login(email='tpadmin@uci.edu', net_id='tpadmin')
     client.get('/faculty/create-member')
@@ -74,6 +109,38 @@ def test_update_member(client, auth, app):
         db = get_db()
         user = db.execute('SELECT * FROM users WHERE user_id = 1').fetchone()
         assert user['user_name'] == 'Updated'
+
+def test_invalid_update_member(client, auth, app):
+    auth.login(email='tpadmin@uci.edu', net_id='tpadmin')
+    assert client.get('/faculty/1/update').status_code == 200
+
+    # name is required
+    client.post('/faculty/1/update', data={'name': '', 'ucinetid': 'tpadmin', 'email': 'tpadmin@uci.edu', 'role': 'tenured pot', 'status': 1})
+    with app.app_context():
+        db = get_db()
+        user = db.execute('SELECT * FROM users WHERE user_id = 1').fetchone()
+        assert user['user_name'] == 'Test Professor Admin'
+
+    # ucinetid is required
+    client.post('/faculty/1/update', data={'name': 'Updated', 'ucinetid': '', 'email': 'tpadmin@uci.edu', 'role': 'tenured pot', 'status': 1})
+    with app.app_context():
+        db = get_db()
+        user = db.execute('SELECT * FROM users WHERE user_id = 1').fetchone()
+        assert user['user_name'] == 'Test Professor Admin'
+
+    # email is required
+    client.post('/faculty/1/update', data={'name': 'Updated', 'ucinetid': 'tpadmin', 'email': '', 'role': 'tenured pot', 'status': 1})
+    with app.app_context():
+        db = get_db()
+        user = db.execute('SELECT * FROM users WHERE user_id = 1').fetchone()
+        assert user['user_name'] == 'Test Professor Admin'
+
+    # role is required
+    client.post('/faculty/1/update', data={'name': 'Updated', 'ucinetid': 'tpadmin', 'email': 'tpadmin@uci.edu', 'role': '', 'status': 1})
+    with app.app_context():
+        db = get_db()
+        user = db.execute('SELECT * FROM users WHERE user_id = 1').fetchone()
+        assert user['user_name'] == 'Test Professor Admin'
 
 def test_update_member_status(client, auth, app):
     auth.login(email='tpadmin@uci.edu', net_id='tpadmin')
@@ -132,7 +199,7 @@ def test_update_points_by_grad(client, auth, app):
         log = db.execute("SELECT * FROM logs WHERE owner = 'Admin: Test Professor Admin'").fetchone()
         assert log['log_category'] == 'Update faculty member points'
 
-def test_update_points_by_execptions(client, auth, app):
+def test_update_points_by_execptions_add(client, auth, app):
     auth.login(email='tpadmin@uci.edu', net_id='tpadmin')
     assert client.get('/faculty/1/update/2022').status_code == 200
     client.post('/faculty/1/update/2022', data={
@@ -141,9 +208,8 @@ def test_update_points_by_execptions(client, auth, app):
         'exception_adjust': 'exception_add',
         'exception_point': '1',
         'exception_category': 'buyout',
-        'exception_message': ''
+        'exception_message': 'test_message'
     })
-
     with app.app_context():
         db = get_db()
         exceptions = db.execute('SELECT SUM(points) AS p FROM exceptions WHERE user_id = 1 AND year = 2022').fetchone()
@@ -151,7 +217,55 @@ def test_update_points_by_execptions(client, auth, app):
         points = db.execute('SELECT * FROM faculty_point_info WHERE user_id = 1 AND year = 2022').fetchone()
         assert points['ending_balance'] == 2.75
         log = db.execute("SELECT * FROM logs WHERE owner = 'Admin: Test Professor Admin'").fetchone()
-        assert log['log_category'] == 'buyout'
+        assert log['log_category'] == 'buyout_test_message'
+
+def test_update_points_by_execptions_substract(client, auth, app):
+    auth.login(email='tpadmin@uci.edu', net_id='tpadmin')
+    assert client.get('/faculty/1/update/2022').status_code == 200
+    client.post('/faculty/1/update/2022', data={
+        'grad_count': '2.0',
+        'grad_students': 'Student 1, Student 2',
+        'exception_adjust': 'exception_subtract',
+        'exception_point': '1',
+        'exception_category': 'buyout',
+        'exception_message': ''
+    })
+    with app.app_context():
+        db = get_db()
+        exceptions = db.execute('SELECT SUM(points) AS p FROM exceptions WHERE user_id = 1 AND year = 2022').fetchone()
+        assert exceptions['p'] == 1.0
+
+def test_invalid_update_points(client, auth, app):
+    auth.login(email='tpadmin@uci.edu', net_id='tpadmin')
+    assert client.get('/faculty/1/update/2022').status_code == 200
+
+    # with exception_adjust, need to fill exception_point 
+    client.post('/faculty/1/update/2022', data={
+        'grad_count': '2.0',
+        'grad_students': '',
+        'exception_adjust': 'exception_add',
+        'exception_point': '',
+        'exception_category': 'buyout',
+        'exception_message': ''
+    })
+    with app.app_context():
+        db = get_db()
+        exceptions = db.execute('SELECT SUM(points) AS p FROM exceptions WHERE user_id = 1 AND year = 2022').fetchone()
+        assert exceptions['p'] == 2
+
+    # with exception_adjust, need to fill exception_category 
+    client.post('/faculty/1/update/2022', data={
+        'grad_count': '2.0',
+        'grad_students': '',
+        'exception_adjust': 'exception_add',
+        'exception_point': '1.0',
+        'exception_category': 'None',
+        'exception_message': ''
+    })
+    with app.app_context():
+        db = get_db()
+        exceptions = db.execute('SELECT SUM(points) AS p FROM exceptions WHERE user_id = 1 AND year = 2022').fetchone()
+        assert exceptions['p'] == 2
 
 def test_regular_faculty_login_dashboard(client, auth):
     auth.login(email='tprofessor@uci.edu', net_id='tprofessor')
