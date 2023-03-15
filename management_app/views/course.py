@@ -55,6 +55,7 @@ def download_template(filename):
             
         return download_file(filename)
 
+
 @courses.route('/upload', methods=['POST'])
 @login_required
 def upload_user_file():
@@ -64,50 +65,17 @@ def upload_user_file():
         file_path = get_upload_filepath(filename)
         upload_file(file)
 
-        quarterDict = {"fall": 1, "winter": 2, "spring": 3, "summer": 4}
-
-        df = pd.read_excel(file_path, sheet_name=1)
-        rows = df.values.tolist()
         rows_dict = {}
         user_id_and_academic_year_set = set()
-        offering_tmp = []
-        for row in rows:
-            year = row[0]
-            quarter = row[1]
-            if type(quarter) == str:
-                quarter = quarter.lower()
-                if quarter in quarterDict.keys():
-                    quarter = quarterDict[quarter]
-            
-            academic_year = get_academic_year(year, quarter)            
-            
-            # if it's a co-taught course, the UCINetID column will have multiple users seperated by comma
-            # row[2] looks like: " emj, alfchen"
-            user_UCINetID_list = get_ucinetid_list(row[2])
-            num_of_co_taught = len(user_UCINetID_list)
+        offering_tmp = get_offering_from_excel(file_path, file, rows_dict, user_id_and_academic_year_set)
 
-            # course_title_id column may be like "CS 143B" or "CS143B" -> all convert to "CS143B"
-            course_title_id = row[3].strip().replace(' ', '')
-            combine_with = get_combine_with(course_title_id)
-            
-            course_sec = row[4].strip()
-            
-            num_of_enrollment = get_num_of_enrollment(row[5])
-            offload_or_recall_flag = get_offload_or_recall_flag(row[6])
+        if offering_tmp == []:
+            return redirect(url_for('courses.offerings'))
 
-            # Input validation: if not valid input, reject the whole file and show error message with the incorrect column
-            if not is_valid_input(year, quarter, user_UCINetID_list, course_title_id, course_sec, num_of_enrollment, offload_or_recall_flag):
-                remove_upload_file(file)                    
-                return redirect(url_for('courses.offerings'))
-
-            offering_tmp.append({"user_UCINetID_list": user_UCINetID_list, "num_of_enrollment": num_of_enrollment, "user_id_and_academic_year_set": user_id_and_academic_year_set, "academic_year": academic_year, "combine_with": combine_with, "rows_dict": rows_dict, "course_title_id": course_title_id, "year": year, "quarter": quarter, "course_sec": course_sec, "offload_or_recall_flag": offload_or_recall_flag, "num_of_co_taught": num_of_co_taught})
-        
-        # insert or update only when the file is all correct
         for row_dict in offering_tmp:
             insert_or_update_scheduled_teaching_for_each_user(row_dict["user_UCINetID_list"], row_dict["num_of_enrollment"], row_dict["user_id_and_academic_year_set"], row_dict["academic_year"], row_dict["combine_with"], row_dict["rows_dict"], row_dict["course_title_id"], row_dict["year"], row_dict["quarter"], row_dict["course_sec"], row_dict["offload_or_recall_flag"], row_dict["num_of_co_taught"])
 
-        owner = 'Admin: ' + g.user['user_name']
-        insert_log(owner, None, None, "Upload scheduled teaching file")
+        insert_log('Admin: ' + g.user['user_name'], None, None, "Upload scheduled teaching file")
         flash('Upload scheduled teaching file successfully!', 'success')
 
         # rules #5: Combined grad/undergraduate classes
@@ -152,8 +120,7 @@ def create_offering():
         rows_dict = {}
         insert_or_update_scheduled_teaching_for_each_user(user_UCINetID_list, num_of_enrollment, user_id_and_academic_year_set, academic_year, combine_with, rows_dict, course_title_id, year, quarter, course_sec, offload_or_recall_flag, num_of_co_taught)
 
-        owner = 'Admin: ' + g.user['user_name']
-        insert_log(owner, user_id, None, "Add scheduled teaching")
+        insert_log('Admin: ' + g.user['user_name'], user_id, None, "Add scheduled teaching")
         flash('Add scheduled teaching data successfully!', 'success')
 
         # rules #5: Combined grad/undergraduate classes
@@ -164,7 +131,6 @@ def create_offering():
 
         return redirect(url_for('courses.offerings'))
     return render_template('courses/create-offering.html', ucinetid_options=ucinetid_options)
-
 
 
 @courses.route('/update/<int:user_id>/<int:year>/<int:quarter>/<course_title_id>/<course_sec>', methods=['GET', 'POST'])
@@ -188,8 +154,7 @@ def update_offering(user_id, year, quarter, course_title_id, course_sec):
         )
         db.commit()
 
-        owner = 'Admin: ' + g.user['user_name']
-        insert_log(owner, user_id, None, "Edit scheduled teaching")
+        insert_log('Admin: ' + g.user['user_name'], user_id, None, "Edit scheduled teaching")
         flash('Edit scheduled teaching data successfully!', 'success')
 
         academic_year = get_academic_year(year, quarter)
@@ -210,8 +175,7 @@ def delete_offering(user_id, year, quarter, course_title_id, course_sec):
     )
     db.commit()
 
-    owner = 'Admin: ' + g.user['user_name']
-    insert_log(owner, user_id, None, "Delete scheduled teaching")
+    insert_log('Admin: ' + g.user['user_name'], user_id, None, "Delete scheduled teaching")
     flash('Delete scheduled teaching data successfully!', 'success')
 
     academic_year = get_academic_year(year, quarter)
@@ -231,7 +195,7 @@ def add_course():
 
         error = None
         if is_course_title_id_taken(title_id):
-            error = 'Course Title ID is already taken. '
+            error = 'Course Title ID is already taken.'
 
         if error is not None:
             flash(error, 'error')
@@ -581,3 +545,42 @@ def get_displayed_courses(y_start, y_end):
     ).fetchall()
 
     return courses
+
+
+def get_offering_from_excel(file_path, file, rows_dict, user_id_and_academic_year_set):
+    quarterDict = {"fall": 1, "winter": 2, "spring": 3, "summer": 4}
+    df = pd.read_excel(file_path, sheet_name=1)
+    rows = df.values.tolist()    
+    offering_tmp = []
+    for row in rows:
+        year = row[0]
+        quarter = row[1]
+        if type(quarter) == str:
+            quarter = quarter.lower()
+            if quarter in quarterDict.keys():
+                quarter = quarterDict[quarter]
+        
+        academic_year = get_academic_year(year, quarter)            
+        
+        # if it's a co-taught course, the UCINetID column will have multiple users seperated by comma
+        # row[2] looks like: " emj, alfchen"
+        user_UCINetID_list = get_ucinetid_list(row[2])
+        num_of_co_taught = len(user_UCINetID_list)
+
+        # course_title_id column may be like "CS 143B" or "CS143B" -> all convert to "CS143B"
+        course_title_id = row[3].strip().replace(' ', '')
+        combine_with = get_combine_with(course_title_id)
+        
+        course_sec = row[4].strip()
+        
+        num_of_enrollment = get_num_of_enrollment(row[5])
+        offload_or_recall_flag = get_offload_or_recall_flag(row[6])
+
+        # Input validation: if not valid input, reject the whole file and show error message with the incorrect column (insert or update only when the file is all correct)        
+        if not is_valid_input(year, quarter, user_UCINetID_list, course_title_id, course_sec, num_of_enrollment, offload_or_recall_flag):
+            remove_upload_file(file)                
+            return []
+
+        offering_tmp.append({"user_UCINetID_list": user_UCINetID_list, "num_of_enrollment": num_of_enrollment, "user_id_and_academic_year_set": user_id_and_academic_year_set, "academic_year": academic_year, "combine_with": combine_with, "rows_dict": rows_dict, "course_title_id": course_title_id, "year": year, "quarter": quarter, "course_sec": course_sec, "offload_or_recall_flag": offload_or_recall_flag, "num_of_co_taught": num_of_co_taught})
+
+    return offering_tmp
