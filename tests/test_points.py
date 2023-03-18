@@ -1,5 +1,5 @@
 from management_app.db import get_db
-from management_app.views.points import calculate_teaching_point_val, get_faculty_roles_credit_due, calculate_yearly_ending_balance
+from management_app.views.points import calculate_teaching_point_val, get_faculty_roles_credit_due, calculate_yearly_ending_balance, get_previous_year_point_balance
 
 def test_calculate_teaching_point_val(app):
     with app.app_context():
@@ -43,3 +43,11 @@ def test_calculate_yearly_ending_balance(app):
                 point_info['credit_due']
             )
             assert ending_balance == point_info['ending_balance'], f"Test failed for - user_id: {point_info['user_id']}, year: {point_info['year']}"
+
+def test_get_previous_year_point_balance(app):
+    with app.app_context():
+        prev_balance = get_previous_year_point_balance(2022, 1, 1)
+        assert prev_balance == 2.0
+
+        prev_balance = get_previous_year_point_balance(2025, 1, 1)
+        assert prev_balance == 0

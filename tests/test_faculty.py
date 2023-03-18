@@ -34,6 +34,13 @@ def test_get_all_faculty_points(client, auth):
     assert client.get('/faculty/points').status_code == 200
     assert client.get('/faculty/points?year=2022-2023').status_code == 200
 
+def test_empty_year_options(client, auth, app):
+    auth.login(email='tpadmin@uci.edu', net_id='tpadmin')
+    with app.app_context():
+        db = get_db()
+        db.execute("DELETE FROM faculty_point_info")
+        assert client.get('/faculty/points').status_code == 200
+
 def test_get_faculty_dashboard(client, auth):
     auth.login(email='tpadmin@uci.edu', net_id='tpadmin')
     assert client.get('/faculty/points/1').status_code == 200
