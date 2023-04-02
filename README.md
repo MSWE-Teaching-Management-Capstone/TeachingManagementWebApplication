@@ -124,6 +124,30 @@ If you want to check terminal report with missing line numbers:
 python -m pytest --cov-report term-missing --cov=management_app
 ```
 
+## Run Docker
+
+Currently, we wrapped our Flask application and run it by Docker container under `docker` branch. If you want to run the app using Docker, please checkout to this feature branch.
+
+```shell
+git checkout docker
+```
+
+With Docker, developers don't need to worry about different OS systems, or varios Python versions. All we need to do is installing Docker and run Docker, so the development environment will be all set. Please make sure you have installed Docker locally. If not, we recommend you to install [Docker Desktop](https://www.docker.com/products/docker-desktop/) since it has easy interface to manage Docker enviornments.
+
+Under the directory where `Dockerfile` is, run the following command to build the Docker image called `uciapp`.
+
+```shell
+docker build -t uciapp .
+```
+
+Once you build the image successfully, you are ready to run this container. We use `--volumn` (-v) to mount and share management_app and sqlite instance database between our host machine and Docker container, so it is a real-time change.
+
+```shell
+docker run -p 5000:5000 -v $(pwd)/management_app:/app/management_app -v $(pwd)/instance:/app/instance uciapp
+```
+
+You can also check out what files inside Docker container by using Docker Desktop. For more details information, next steps, and troubleshooting, please refer to GitHub Wiki page.
+
 ## Reference
 - https://plainenglish.io/blog/flask-crud-application-using-mvc-architecture
 - https://flask.palletsprojects.com/en/2.2.x/tutorial/layout/
