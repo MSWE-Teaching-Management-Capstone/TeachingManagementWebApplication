@@ -42,7 +42,7 @@ class AuthActions(object):
 
     def login(self, **kwargs):
         with self._client.session_transaction() as session:
-            session['google_id'] = 'google_id'
+            session['net_id'] = 'google_id'
             session['domain'] = 'uci.edu'
             for key in kwargs:
                 session[key] = kwargs[key]

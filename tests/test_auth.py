@@ -12,7 +12,7 @@ def test_logout(client, auth):
     auth.login()
     with client:
         auth.logout()
-        assert 'google_id' not in session
+        assert 'net_id' not in session
         assert 'domain' not in session
 
 def test_logged_in_admin_user(client, auth):
