@@ -3,7 +3,6 @@ import os
 from flask import Blueprint, render_template, request, redirect, url_for, flash, g
 from werkzeug.utils import secure_filename
 from datetime import datetime
-
 from management_app.db import get_db
 from management_app.views.auth import login_required
 from management_app.views.utils import download_file, upload_file, remove_upload_file, get_upload_filepath, insert_log, convert_local_timezone, BASE_DIR, DOWNLOAD_FOLDER, get_exist_user
@@ -170,8 +169,7 @@ def create_member():
                 )
                 db.commit()
 
-                owner = 'Admin: ' + g.user['user_name']
-                insert_log(owner, user_id, None, 'Add new faculty member')
+                insert_log('Admin: ' + g.user['user_name'], user_id, None, 'Add new faculty member')
             except:
                 error = 'Database insert error. User is already existed.'
 
@@ -232,8 +230,7 @@ def update_points(id, year):
             # Update total ending_point finally
             update_yearly_ending_balance(id, year)
 
-            owner = 'Admin: ' + g.user['user_name']
-            insert_log(owner, id, None, 'Update faculty member points')
+            insert_log('Admin: ' + g.user['user_name'], id, None, 'Update faculty member points')
         except Exception as e:
             print(e)
             error = 'Failed to update. Please refresh and fill the correct info again.'
@@ -311,8 +308,7 @@ def update_member(id):
                 if cur_status != status and role_end_year is None:
                     update_faculty_status(id, role_start_year, cur_year, role, status)
 
-                owner = 'Admin: ' + g.user['user_name']
-                insert_log(owner, id, None, 'Update faculty member information')
+                insert_log('Admin: ' + g.user['user_name'], id, None, 'Update faculty member information')
         except Exception as e:
             print(e)
             error = 'Failed to update. Please refresh and fill the correct info again.'
@@ -377,8 +373,7 @@ def process_user_file(file_path, sheet__index, sheet__index_name):
         if faculty['role'] != 'staff':
             insert_faculty_status(faculty['user_ucinetid'], faculty['start_year'], faculty['role'], faculty['is_active'])
 
-    owner = 'Admin: ' + g.user['user_name']
-    insert_log(owner, None, None, 'Upload users spreadsheet')
+    insert_log('Admin: ' + g.user['user_name'], None, None, 'Upload users spreadsheet')
     flash('Upload users data succesfully!', 'success')
     return
 
@@ -433,8 +428,7 @@ def process_professors_point_file(file_path, sheet__index, sheet__index_name):
     for point in point_temp:
         insert_faculty_point_info(point['user_id'], point['year'], point['previous_balance'], point['grad_count'], point['grad_students'], point['credit_due'])
 
-    owner = 'Admin: ' + g.user['user_name']
-    insert_log(owner, None, None, 'Upload professors point spreadsheet')
+    insert_log('Admin: ' + g.user['user_name'], None, None, 'Upload professors point spreadsheet')
     flash('Upload professors point info data succesfully!', 'success')
     return
 
@@ -693,8 +687,7 @@ def insert_exception(user_id, year, exception_category, exception_message, point
     log_category = exception_category
     if len(exception_message) > 0:
         log_category += '_' + exception_message
-    owner = 'Admin: ' + g.user['user_name']
-    insert_log(owner, user_id, exception_id, log_category)
+    insert_log('Admin: ' + g.user['user_name'], user_id, exception_id, log_category)
     db.commit()
 
 def update_users(name, email, ucinetid, user_id):
@@ -750,8 +743,7 @@ def update_faculty_status(user_id, start_year, cur_year, role, status):
     db.commit()
 
     status_msg = 'Active' if status == 1 else 'Inactive'
-    owner = 'Admin: ' + g.user['user_name']
-    insert_log(owner, user_id, None, 'Update faculty member status to "{}"'.format(status_msg))
+    insert_log('Admin: ' + g.user['user_name'], user_id, None, 'Update faculty member status to "{}"'.format(status_msg))
 
 def update_faculty_grad_info(user_id, year, grad_count, grad_students):
     db = get_db()

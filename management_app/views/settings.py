@@ -1,5 +1,4 @@
 from flask import Blueprint, Response, render_template, flash, make_response, redirect, url_for, request, g
-
 from management_app.db import get_db
 from management_app.views.auth import login_required
 from management_app.views.points import get_latest_academic_year, calculate_teaching_point_val, update_yearly_ending_balance
@@ -145,7 +144,7 @@ def update_teaching_point_balances(rule_id):
                     SET teaching_point_val = ?
                     WHERE user_id = ? AND year = ? AND quarter = ? AND course_title_id = ? AND course_sec = ?
                 """, (value, offering['user_id'], offering['year'], offering['quarter'], offering['course_title_id'], offering['course_sec']))
-        
+
         db.commit()
 
         faculty = db.execute('SELECT user_id FROM faculty_status WHERE active_status IS TRUE').fetchall()

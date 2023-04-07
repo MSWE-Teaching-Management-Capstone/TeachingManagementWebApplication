@@ -28,11 +28,10 @@ flow = Flow.from_client_secrets_file(
 def login_required(view):
     @functools.wraps(view)
     def wrapped_view(**kwargs):
-        if "google_id" not in session:
+        if "net_id" not in session:
             return redirect(url_for('auth.index'))
         else:
             return view(**kwargs)
-
     return wrapped_view
 
 @auth.route("/")
@@ -68,12 +67,11 @@ def login_callback():
         audience=os.getenv("GOOGLE_CLIENT_ID")
     )
 
-    session["google_id"] = id_info.get("sub")
-    session["domain"] = id_info.get("hd", "-1")
+    domain = id_info.get("hd", "-1")
     session['net_id'] = id_info.get('email').split(sep='@')[0]
 
     # verify the domain of email comes from UCI
-    if session["domain"] != os.getenv("DOMAIN", ""):
+    if domain != os.getenv("DOMAIN", ""):
         session.clear()
         flash("Alert: You have to log in with your UCI email (e.g. abc123@uci.edu)")
         return redirect(url_for('auth.index'))
@@ -83,7 +81,6 @@ def login_callback():
         session.clear()
         flash("Alert: You do not have the permission to access the system.")
         return redirect(url_for('auth.index'))
-
     return redirect(url_for('auth.redirect_to_homepage'))
 
 @auth.route("/redirect_to_homepage")

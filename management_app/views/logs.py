@@ -1,5 +1,4 @@
 from flask import (Blueprint, render_template, redirect, url_for, request)
-
 from management_app.db import get_db
 from management_app.views.auth import login_required
 from management_app.views.utils import convert_local_timezone
@@ -114,7 +113,6 @@ def convert_description(category, affected_user_id):
         return category
     user_name = get_username_from_id(affected_user_id)
     description = f'{category}({user_name})'
-
     return description
 
 
