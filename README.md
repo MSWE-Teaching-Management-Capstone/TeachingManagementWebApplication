@@ -4,15 +4,6 @@
 - Back-end framework: Flask
 - Database: SQLite3
 
-## How to visit the deployed site
-1. Connect to UCI VPN
-2. open `/etc/hosts` on your local machine, append the following line:
-```
-128.195.13.110 cstpoints.com
-```
-3. Save and exit, then visit [cstpoints.com:5000](cstpoints.com:5000)
-
-
 ## Project Setup
 
 ### Prerequisite
@@ -123,6 +114,9 @@ If you want to check terminal report with missing line numbers:
 ```shell
 python -m pytest --cov-report term-missing --cov=management_app
 ```
+
+## Project Deploy
+It is not ready but some instructions of how to access the Virtual Machine hosted in UCI ICS server. Please refer to our Wiki page to learn more details.
 
 ## Reference
 - https://plainenglish.io/blog/flask-crud-application-using-mvc-architecture
