@@ -3,6 +3,7 @@ from flask import send_from_directory
 from werkzeug.utils import secure_filename
 import datetime as dt
 from management_app.db import get_db
+from management_app.models import Users, Logs
 
 BASE_DIR = os.path.realpath(os.path.join(os.path.dirname(__file__), '..'))
 UPLOAD_FOLDER = 'static/upload_files'
@@ -41,16 +42,15 @@ def remove_upload_file(file):
 
 def get_exist_user(user_ucinetid):
     db = get_db()
-    return db.execute(
-        'SELECT * FROM users WHERE user_ucinetid = ?', (user_ucinetid,)
-    ).fetchone()
+    user = db.session.execute(db.select(Users).filter_by(user_ucinetid=user_ucinetid)).scalar_one()
+
+    return user
 
 def insert_log(owner: str, user_id: int = None, exception_id: int = None, log_category: str = None):
     db = get_db()
-    db.execute("INSERT INTO logs (owner, created, user_id, exception_id, log_category)"
-               " VALUES(?, CURRENT_TIMESTAMP, ?, ?, ?)",
-               (owner, user_id, exception_id, log_category))
-    db.commit()
+    log = Logs(owner=owner, user_id=user_id, exception_id=exception_id, log_category=log_category)
+    db.session.add(log)
+    db.session.commit()
     return
 
 def convert_local_timezone(utc_timestamp):

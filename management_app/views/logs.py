@@ -3,6 +3,7 @@ from flask import (Blueprint, render_template, redirect, url_for, request)
 from management_app.db import get_db
 from management_app.views.auth import login_required
 from management_app.views.utils import convert_local_timezone
+from management_app.models import *
 
 logs = Blueprint('logs', __name__, url_prefix='/logs')
 
@@ -36,24 +37,41 @@ def get_admin_exceptions_with_daterange():
 
         db = get_db()
 
-        raw = db.execute(
-            'SELECT logs.created, logs.owner, users.user_name, exceptions.exception_category, exceptions.message'
-            ' FROM logs'
-            ' JOIN users ON users.user_id = logs.user_id'
-            ' JOIN exceptions ON logs.exception_id = exceptions.exception_id'
-            ' WHERE logs.exception_id IS NOT NULL AND logs.user_id IS NOT NULL'
-            ' AND logs.created < ? AND logs.created > ?',
-            (end_date, start_date),
-        ).fetchall()
+        # raw = db.execute(
+        #     'SELECT logs.created, logs.owner, users.user_name, exceptions.exception_category, exceptions.message'
+        #     ' FROM logs'
+        #     ' JOIN users ON users.user_id = logs.user_id'
+        #     ' JOIN exceptions ON logs.exception_id = exceptions.exception_id'
+        #     ' WHERE logs.exception_id IS NOT NULL AND logs.user_id IS NOT NULL'
+        #     ' AND logs.created < ? AND logs.created > ?',
+        #     (end_date, start_date),
+        # ).fetchall()
+        stmt = db.select(
+            Logs.created,
+            Logs.owner,
+            Users.user_name,
+            Exceptions.exception_category,
+            Exceptions.message
+        ).select_from(Logs).\
+            join(Users, Users.user_id == Logs.user_id).\
+            join(Exceptions, Logs.exception_id == Exceptions.exception_id).\
+            where(
+                Logs.exception_id.isnot(None),
+                Logs.user_id.isnot(None),
+                Logs.created < end_date,
+                Logs.created > start_date
+            )
+
+        raw = db.session.execute(stmt).fetchall()
 
         for record in raw:
             admin_exceptions_with_dates.append(
                 {
-                    'timeStamp': convert_local_timezone(record['created']),
-                    'owner': record['owner'],
-                    'affected': record['user_name'],
-                    'exception': record['exception_category'],
-                    'reason': record['message']
+                    'timeStamp': convert_local_timezone(record.created),
+                    'owner': record.owner,
+                    'affected': record.user_name,
+                    'exception': record.exception_category,
+                    'reason': record.message
                 }
             )
 
@@ -64,22 +82,40 @@ def get_admin_exception_logs():
     admin_exceptions = []
     db = get_db()
 
-    raw = db.execute(
-        'SELECT logs.created, logs.owner, users.user_name, exceptions.exception_category, exceptions.message'
-        ' FROM logs'
-        ' JOIN users ON users.user_id = logs.user_id'
-        ' JOIN exceptions ON logs.exception_id = exceptions.exception_id'
-        ' WHERE logs.exception_id IS NOT NULL AND logs.user_id IS NOT NULL'
-    ).fetchall()
+    # raw = db.execute(
+    #     'SELECT logs.created, logs.owner, users.user_name, exceptions.exception_category, exceptions.message'
+    #     ' FROM logs'
+    #     ' JOIN users ON users.user_id = logs.user_id'
+    #     ' JOIN exceptions ON logs.exception_id = exceptions.exception_id'
+    #     ' WHERE logs.exception_id IS NOT NULL AND logs.user_id IS NOT NULL'
+    # ).fetchall()
+    stmt = db.select(
+        Logs.created,
+        Logs.owner,
+        Users.user_name,
+        Exceptions.exception_category,
+        Exceptions.message
+    ).join(
+        Users,
+        Users.user_id == Logs.user_id
+    ).join(
+        Exceptions,
+        Logs.exception_id == Exceptions.exception_id
+    ).where(
+        Logs.exception_id.isnot(None),
+        Logs.user_id.isnot(None)
+    )
+
+    raw = db.session.execute(stmt).fetchall()
 
     for record in raw:
         admin_exceptions.append(
             {
-                'timeStamp': convert_local_timezone(record['created']),
-                'owner': record['owner'],
-                'affected': record['user_name'],
-                'exception': record['exception_category'],
-                'reason': record['message']
+                'timeStamp': convert_local_timezone(record.created),
+                'owner': record.owner,
+                'affected': record.user_name,
+                'exception': record.exception_category,
+                'reason': record.message
             }
         )
 
@@ -90,19 +126,22 @@ def get_admin_general_logs():
     admin_general = []
     db = get_db()
 
-    raw = db.execute(
-        'SELECT logs.created, logs.owner, logs.log_category, logs.user_id, logs.exception_id'
-        ' FROM logs'
-        ' WHERE logs.exception_id IS NULL',
-    ).fetchall()
+    # raw = db.execute(
+    #     'SELECT logs.created, logs.owner, logs.log_category, logs.user_id, logs.exception_id'
+    #     ' FROM logs'
+    #     ' WHERE logs.exception_id IS NULL',
+    # ).fetchall()
+    stmt = db.select(Logs.created, Logs.owner, Logs.log_category, Logs.user_id, Logs.exception_id).where(Logs.exception_id.is_(None))
+
+    raw = db.session.execute(stmt).fetchall()
 
     for record in raw:
         admin_general.append(
             {
-                'timeStamp': convert_local_timezone(record['created']),  # This is a `datetime.datetime` object
-                'owner': record['owner'],
-                'description': convert_description(record['log_category'],
-                                                   record['user_id'] if 'user_id' in record.keys() else None)
+                'timeStamp': convert_local_timezone(record.created),  # This is a `datetime.datetime` object
+                'owner': record.owner,
+                'description': convert_description(record.log_category,
+                                                   record.user_id if record.user_id is not None else None)
             }
         )
 
@@ -120,6 +159,8 @@ def convert_description(category, affected_user_id):
 
 def get_username_from_id(user_id):
     db = get_db()
-    res = db.execute('SELECT * FROM users WHERE user_id = ?', (user_id,)
-    ).fetchone()
-    return res['user_name'] if res is not None else ''
+    # res = db.execute('SELECT * FROM users WHERE user_id = ?', (user_id,)
+    # ).fetchone()
+    res = db.session.execute(db.select(Users).where(Users.user_id == user_id)).scalar()
+
+    return res.user_name if res is not None else ''

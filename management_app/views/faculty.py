@@ -8,6 +8,7 @@ from management_app.db import get_db
 from management_app.views.auth import login_required
 from management_app.views.utils import download_file, upload_file, remove_upload_file, get_upload_filepath, insert_log, convert_local_timezone, BASE_DIR, DOWNLOAD_FOLDER, get_exist_user
 from management_app.views.points import calculate_yearly_ending_balance, get_faculty_roles_credit_due, update_yearly_ending_balance, get_yearly_teaching_points, get_grad_mentoring_points, get_yearly_exception_points, get_latest_academic_year
+from management_app.models import *
 
 faculty = Blueprint('faculty', __name__, url_prefix='/faculty')
 
@@ -15,8 +16,8 @@ faculty = Blueprint('faculty', __name__, url_prefix='/faculty')
 @faculty.route('/', methods=['GET'])
 @login_required
 def faculty_index():
-    user_id = g.user['user_id']
-    faculty_name = g.user['user_name']
+    user_id = g.user.user_id
+    faculty_name = g.user.user_name
     res = get_faculty_point_breakdown(user_id)
     year_options = get_professor_point_year_ranges()
     point_info = res[0]
@@ -55,7 +56,10 @@ def members():
 @login_required
 def point_breakdown(id):
     db = get_db()
-    faculty_name = db.execute('SELECT * FROM users WHERE user_id = ?', (id,)).fetchone()['user_name']
+    # faculty_name = db.execute('SELECT * FROM users WHERE user_id = ?', (id,)).fetchone()['user_name']
+    user = db.session.execute(db.select(Users).filter_by(user_id=id)).scalar_one()
+    faculty_name = user.user_name
+
     res = get_faculty_point_breakdown(id)
     year_options = get_professor_point_year_ranges()
     point_info = res[0]
@@ -77,14 +81,21 @@ def download_template(filename):
         # Pre-populate data for the 2nd download for faculty_point_info template
         if filename == 'professors_point_info.xlsx':
             db = get_db()
-            res = db.execute(
-                """SELECT users.user_name, users.user_ucinetid
-                    FROM users
-                    JOIN faculty_status
-                    ON faculty_status.user_id = users.user_id
-                    WHERE faculty_status.active_status = 1 AND faculty_status.role != 'staff'
-                """
-            ).fetchall()
+            # res = db.execute(
+            #     """SELECT users.user_name, users.user_ucinetid
+            #         FROM users
+            #         JOIN faculty_status
+            #         ON faculty_status.user_id = users.user_id
+            #         WHERE faculty_status.active_status = 1 AND faculty_status.role != 'staff'
+            #     """
+            # ).fetchall()
+            stmt = db.select(Users).\
+            join(FacultyStatus, FacultyStatus.user_id == Users.user_id).\
+            where(FacultyStatus.active_status == 1).\
+            where(FacultyStatus.role != 'staff')
+
+            res = db.session.execute(stmt).scalars()
+
             latest_year = get_latest_academic_year()
 
             # pre-populate next academic year, faculty name, faculty ucinetid for active faculty users
@@ -92,7 +103,7 @@ def download_template(filename):
                 next_year = latest_year+1
                 rows_data = []
                 for user in res:
-                    rows_data.append([next_year, user['user_name'], user['user_ucinetid'], '', ''])
+                    rows_data.append([next_year, user.user_name, user.user_ucinetid, '', ''])
 
                 df1 = pd.DataFrame(
                     [['professors_point_info', 'year', '2022'], ['', 'user_name', 'Jessica Wong'], ['', 'user_UCINetID', 'Jen123'], ['', 'grad_count', '10.5'], ['', 'grad_students (students name)', 'Johnny Wang, Nacy Yang, Jassica W']],
@@ -155,22 +166,31 @@ def create_member():
         else:
             try:
                 db = get_db()
-                cursor = db.cursor()
-                cursor.execute(
-                    'INSERT INTO users (user_name, user_email, user_ucinetid, admin)'
-                    ' VALUES (?, ?, ?, ?)',
-                    (name, email, ucinetid, 0)
-                )
-                user_id = cursor.lastrowid
-                start_year = datetime.now().year
-                cursor.execute(
-                    'INSERT INTO faculty_status (user_id, start_year, role, active_status)'
-                    ' VALUES (?, ?, ?, ?)',
-                    (user_id, start_year, role, 1)
-                )
-                db.commit()
+                # cursor = db.cursor()
+                # cursor.execute(
+                #     'INSERT INTO users (user_name, user_email, user_ucinetid, admin)'
+                #     ' VALUES (?, ?, ?, ?)',
+                #     (name, email, ucinetid, 0)
+                # )
+                new_user = Users(user_name=name, user_email=email, user_ucinetid=ucinetid, admin=0)
+                db.session.add(new_user)
+                db.session.commit()
+                
 
-                owner = 'Admin: ' + g.user['user_name']
+                # # "lastrowid" attribute holds the value of the last inserted row's primary key
+                # user_id = cursor.lastrowid
+                user_id = new_user.user_id
+                start_year = datetime.now().year
+                # cursor.execute(
+                #     'INSERT INTO faculty_status (user_id, start_year, role, active_status)'
+                #     ' VALUES (?, ?, ?, ?)',
+                #     (user_id, start_year, role, 1)
+                # )
+                db.session.add(FacultyStatus(user_id=user_id, start_year=start_year, role=role, active_status=1))
+                # db.commit()
+                db.session.commit()
+
+                owner = 'Admin: ' + g.user.user_name
                 insert_log(owner, user_id, None, 'Add new faculty member')
             except:
                 error = 'Database insert error. User is already existed.'
@@ -232,7 +252,7 @@ def update_points(id, year):
             # Update total ending_point finally
             update_yearly_ending_balance(id, year)
 
-            owner = 'Admin: ' + g.user['user_name']
+            owner = 'Admin: ' + g.user.user_name
             insert_log(owner, id, None, 'Update faculty member points')
         except Exception as e:
             print(e)
@@ -311,7 +331,7 @@ def update_member(id):
                 if cur_status != status and role_end_year is None:
                     update_faculty_status(id, role_start_year, cur_year, role, status)
 
-                owner = 'Admin: ' + g.user['user_name']
+                owner = 'Admin: ' + g.user.user_name
                 insert_log(owner, id, None, 'Update faculty member information')
         except Exception as e:
             print(e)
@@ -377,7 +397,7 @@ def process_user_file(file_path, sheet__index, sheet__index_name):
         if faculty['role'] != 'staff':
             insert_faculty_status(faculty['user_ucinetid'], faculty['start_year'], faculty['role'], faculty['is_active'])
 
-    owner = 'Admin: ' + g.user['user_name']
+    owner = 'Admin: ' + g.user.user_name
     insert_log(owner, None, None, 'Upload users spreadsheet')
     flash('Upload users data succesfully!', 'success')
     return
@@ -433,7 +453,7 @@ def process_professors_point_file(file_path, sheet__index, sheet__index_name):
     for point in point_temp:
         insert_faculty_point_info(point['user_id'], point['year'], point['previous_balance'], point['grad_count'], point['grad_students'], point['credit_due'])
 
-    owner = 'Admin: ' + g.user['user_name']
+    owner = 'Admin: ' + g.user.user_name
     insert_log(owner, None, None, 'Upload professors point spreadsheet')
     flash('Upload professors point info data succesfully!', 'success')
     return
@@ -442,16 +462,21 @@ def get_user_yearly_status(user_id, year):
     # Note: year comes from professor_point_info table, it represents the start of an an academic year
     # e.g., year 2020 should be 2020-2021 (including 2020 Fall(1) - 2021 Winter(2) & Spring(3))
     db = get_db()
-    rows = db.execute(
-        'SELECT * FROM faculty_status WHERE user_id = ? ORDER BY start_year ASC', (user_id,)
-    ).fetchall()
+    # rows = db.execute(
+    #     'SELECT * FROM faculty_status WHERE user_id = ? ORDER BY start_year ASC', (user_id,)
+    # ).fetchall()
+    rows = db.session.execute(
+    db.select(FacultyStatus)
+    .where(FacultyStatus.user_id == user_id)
+    .order_by(FacultyStatus.start_year.asc())
+    ).scalars()
 
     profile = {}
     return_row = None
     for row in rows:
         if row is not None:
-            start_year = row['start_year']
-            end_year = row['end_year']
+            start_year = row.start_year
+            end_year = row.end_year
 
             # If end_year is Null, it's the latest result
             # If end_year is no Null, continue to find result
@@ -463,58 +488,69 @@ def get_user_yearly_status(user_id, year):
                 return_row = row
 
     if return_row is not None:
-        profile['start_year'] = return_row['start_year']
-        profile['end_year'] = return_row['end_year']
-        profile['active_status'] = return_row['active_status']
-        profile['role'] = return_row['role']
+        profile['start_year'] = return_row.start_year
+        profile['end_year'] = return_row.end_year
+        profile['active_status'] = return_row.active_status
+        profile['role'] = return_row.role
     return profile
 
 def get_professor_point_year_ranges():
     year_options = []
     db = get_db()
-    rows = db.execute(
-        'SELECT DISTINCT year FROM faculty_point_info'
-    ).fetchall()
-    for row in rows:
-        year = row['year']
+    # rows = db.execute(
+    #     'SELECT DISTINCT year FROM faculty_point_info'
+    # ).fetchall()
+    years = db.session.execute(db.select(FacultyPointInfo.year.distinct())).scalars()
+
+    for year in years:
         option = str(year) + '-' + str(year+1)
         year_options.append(option)
     return year_options
 
 def get_yearly_previous_balance(user_id, year):
     db = get_db()
-    row = db.execute(
-        'SELECT * FROM faculty_point_info WHERE user_id = ? AND year = ?',
-        (user_id, year-1,)
-    ).fetchone()
-    return None if row is None else row['ending_balance']
+    # row = db.execute(
+    #     'SELECT * FROM faculty_point_info WHERE user_id = ? AND year = ?',
+    #     (user_id, year-1,)
+    # ).fetchone()
+    row = db.session.execute(
+    db.select(FacultyPointInfo).where(
+        (FacultyPointInfo.user_id == user_id) &
+        (FacultyPointInfo.year == year - 1)
+    )).scalar_one()
+
+    return None if row is None else row.ending_balance
 
 def get_all_faculty_point_info(year):
     faculties = []
     db = get_db()
-    data = db.execute(
-        'SELECT users.user_id, users.user_name, users.user_email, faculty.credit_due,faculty.previous_balance, faculty.ending_balance'
-        ' FROM users'
-        ' JOIN faculty_point_info AS faculty ON users.user_id = faculty.user_id'
-        ' WHERE faculty.year = ?'
-        ' ORDER BY users.user_name',
-        (year,)
-    ).fetchall()
+    # data = db.execute(
+    #     'SELECT users.user_id, users.user_name, users.user_email, faculty.credit_due,faculty.previous_balance, faculty.ending_balance'
+    #     ' FROM users'
+    #     ' JOIN faculty_point_info AS faculty ON users.user_id = faculty.user_id'
+    #     ' WHERE faculty.year = ?'
+    #     ' ORDER BY users.user_name',
+    #     (year,)
+    # ).fetchall()
+    stmt = db.select(Users, FacultyPointInfo).\
+    join(FacultyPointInfo, Users.user_id == FacultyPointInfo.user_id).\
+    where(FacultyPointInfo.year == year).order_by(Users.user_name)
+    data = db.session.execute(stmt)
 
     for row in data:
         if row is not None:
             # get user yearly profile_status first
-            user_id = row['user_id']
+            user_id = row.Users.user_id
             profile_status = get_user_yearly_status(user_id, year)
 
             faculties.append({
                 'user_id': user_id,
                 'academic_year': year,
-                'name': row['user_name'],
-                'email': row['user_email'],
-                'required_point': row['credit_due'],
-                'prev_balance': row['previous_balance'],
-                'ending_balance': row['ending_balance'],
+                'name': row.Users.user_name,
+                'email': row.Users.user_email,
+                'required_point': row.FacultyPointInfo.credit_due,
+                'prev_balance': row.FacultyPointInfo.previous_balance,
+                'ending_balance': row.FacultyPointInfo.ending_balance,
                 'profile_status': profile_status # { start_year, end_year, active_status, role }
             })
     return faculties
@@ -523,94 +559,110 @@ def get_all_faculty_point_info(year):
 def get_all_faculty_members():
     members = []
     db = get_db()
-    rows = db.execute(
-        'SELECT u.user_id, u.user_name, u.user_email, u.user_ucinetid, f.role, f.active_status'
-        ' FROM users AS u'
-        ' LEFT JOIN faculty_status AS f ON u.user_id = f.user_id'
-        " WHERE f.end_year IS NULL AND f.role != 'staff'"
-        ' ORDER BY u.user_name'
-    ).fetchall()
+    # rows = db.execute(
+    #     'SELECT u.user_id, u.user_name, u.user_email, u.user_ucinetid, f.role, f.active_status'
+    #     ' FROM users AS u'
+    #     ' LEFT JOIN faculty_status AS f ON u.user_id = f.user_id'
+    #     " WHERE f.end_year IS NULL AND f.role != 'staff'"
+    #     ' ORDER BY u.user_name'
+    # ).fetchall()
+    stmt = db.select(Users, FacultyStatus).\
+    outerjoin(FacultyStatus, Users.user_id == FacultyStatus.user_id).\
+    where((FacultyStatus.end_year == None) & (FacultyStatus.role != 'staff')).\
+    order_by(Users.user_name)
+
+    rows = db.session.execute(stmt)
+    
     for row in rows:
         members.append({
-            'id': row['user_id'],
-            'name': row['user_name'],
-            'email': row['user_email'],
-            'net_id': row['user_ucinetid'],
-            'cur_role': row['role'],
-            'cur_status': row['active_status']
+            'id': row.Users.user_id,
+            'name': row.Users.user_name,
+            'email': row.Users.user_email,
+            'net_id': row.Users.user_ucinetid,
+            'cur_role': row.FacultyStatus.role,
+            'cur_status': row.FacultyStatus.active_status
         })
     return members
 
 def get_faculty_member_info(user_id):
     info = {}
     db = get_db()
-    row = db.execute(
-        'SELECT * FROM users WHERE user_id = ?', (user_id,)
-    ).fetchone()
+    # row = db.execute(
+    #     'SELECT * FROM users WHERE user_id = ?', (user_id,)
+    # ).fetchone()
+    row = Users.query.filter_by(user_id=user_id).first()
     if row is not None:
         info = {
-            'name': row['user_name'],
-            'email': row['user_email'],
-            'ucinetid': row['user_ucinetid']
+            'name': row.user_name,
+            'email': row.user_email,
+            'ucinetid': row.user_ucinetid
         }
     return info
 
 def get_faculty_yearly_point_info(user_id, year):
     point = {}
     db = get_db()
-    row = db.execute(
-        'SELECT * FROM faculty_point_info WHERE user_id = ? AND year = ?',
-        (user_id, year)
-    ).fetchone()
+    # row = db.execute(
+    #     'SELECT * FROM faculty_point_info WHERE user_id = ? AND year = ?',
+    #     (user_id, year)
+    # ).fetchone()
+    stmt = db.select(FacultyPointInfo).\
+        where((FacultyPointInfo.user_id == user_id) & (FacultyPointInfo.year == year))
+    row = db.session.execute(stmt).scalar_one()
+
     if row is not None:
         point = {
-            'previous_balance': row['previous_balance'],
-            'ending_balance': row['ending_balance'],
-            'credit_due': row['credit_due'],
-            'grad_count': row['grad_count'],
-            'grad_students': row['grad_students']
+            'previous_balance': row.previous_balance,
+            'ending_balance': row.ending_balance,
+            'credit_due': row.credit_due,
+            'grad_count': row.grad_count,
+            'grad_students': row.grad_students
         }
     return point
 
 def get_faculty_yearly_exceptions(user_id, year):
     exceptions = []
     db = get_db()
-    rows = db.execute(
-        'SELECT * FROM exceptions WHERE user_id = ? AND year = ?', (user_id, year)
-    ).fetchall()
+    # rows = db.execute(
+    #     'SELECT * FROM exceptions WHERE user_id = ? AND year = ?', (user_id, year)
+    # ).fetchall()
+    stmt = db.select(Exceptions).where((Exceptions.user_id == user_id) & (Exceptions.year == year))
+    rows = db.session.execute(stmt).scalars()
     for row in rows:
         exceptions.append({
-            'exception_category': row['exception_category'],
-            'message': row['message'],
-            'points': row['points']
+            'exception_category': row.exception_category,
+            'message': row.message,
+            'points': row.points
         })
     return exceptions
 
 def get_faculty_roles_history(user_id):
     roles_status = []
     db = get_db()
-    rows = db.execute(
-        'SELECT * FROM faculty_status WHERE user_id = ? ORDER BY start_year', (user_id,)
-    ).fetchall()
+    # rows = db.execute(
+    #     'SELECT * FROM faculty_status WHERE user_id = ? ORDER BY start_year', (user_id,)
+    # ).fetchall()
+    stmt = db.select(FacultyStatus).where(FacultyStatus.user_id == user_id).order_by(FacultyStatus.start_year)
+    rows = db.session.execute(stmt).scalars()
 
     if rows is None:
         return roles_status
 
     for row in rows:
         roles_status.append({
-            'start_year': row['start_year'],
-            'end_year': row['end_year'],
-            'role': row['role'],
-            'active_status': row['active_status']
+            'start_year': row.start_year,
+            'end_year': row.end_year,
+            'role': row.role,
+            'active_status': row.active_status
         })
 
         if len(roles_status) > 1:
             last_profile = roles_status[len(roles_status)-2]
             last_status = last_profile['active_status']
             last_role = last_profile['role']
-            if last_status == row['active_status'] and last_role == row['role']:
+            if last_status == row.active_status and last_role == row.role:
                 roles_status.pop()
-                roles_status[len(roles_status)-1]['end_year'] = row['end_year']
+                roles_status[len(roles_status)-1]['end_year'] = row.end_year
     return roles_status
 
 def get_faculty_point_breakdown(id):
@@ -623,27 +675,58 @@ def get_faculty_point_breakdown(id):
         year_select = request.args.get('year') or year_options[len(year_options)-1]
         year = int(year_select.split('-')[0])
         db = get_db()
-        points = db.execute(
-            'SELECT * from faculty_point_info WHERE user_id = ? AND year = ?', (user_id, year)
-        ).fetchone()
+        # points = db.execute(
+        #     'SELECT * from faculty_point_info WHERE user_id = ? AND year = ?', (user_id, year)
+        # ).fetchone()
+        stmt = db.select(FacultyPointInfo).where((FacultyPointInfo.user_id == user_id) & (FacultyPointInfo.year == year))
+        points = db.session.execute(stmt).scalar_one()
 
         if points is not None:
             offerings = []
-            rows = db.execute(
-                ' SELECT * FROM scheduled_teaching AS st'
-                ' INNER JOIN courses AS c'
-                ' ON st.course_title_id = c.course_title_id'
-                ' WHERE user_id = ? AND ((year = ? AND quarter = 1) OR (year = ? AND quarter = 2) OR (year = ? AND quarter = 3))',
-                (user_id, year, year+1, year+1)
-            ).fetchall()
+            # rows = db.execute(
+            #     ' SELECT * FROM scheduled_teaching AS st'
+            #     ' INNER JOIN courses AS c'
+            #     ' ON st.course_title_id = c.course_title_id'
+            #     ' WHERE user_id = ? AND ((year = ? AND quarter = 1) OR (year = ? AND quarter = 2) OR (year = ? AND quarter = 3))',
+            #     (user_id, year, year+1, year+1)
+            # ).fetchall()
+            stmt = db.select(ScheduledTeaching, Courses).\
+                join(Courses, ScheduledTeaching.course_title_id == Courses.course_title_id).\
+                where((ScheduledTeaching.user_id == user_id) & \
+                (((ScheduledTeaching.year == year) & (ScheduledTeaching.quarter == 1)) | \
+                ((ScheduledTeaching.year == year+1) & (ScheduledTeaching.quarter == 2)) | \
+                ((ScheduledTeaching.year == year+1) & (ScheduledTeaching.quarter == 3))))
+            rows = db.session.execute(stmt)
 
             for row in rows:
-                offerings.append(row)
+                offerings.append({
+                    "user_id": row.ScheduledTeaching.user_id,
+                    "year": row.ScheduledTeaching.year,
+                    "quarter": row.ScheduledTeaching.quarter,
+                    "course_title_id": row.ScheduledTeaching.course_title_id,
+                    "course_sec": row.ScheduledTeaching.course_sec,
+                    "enrollment": row.ScheduledTeaching.enrollment,
+                    "offload_or_recall_flag": row.ScheduledTeaching.offload_or_recall_flag,
+                    "teaching_point_val": row.ScheduledTeaching.teaching_point_val,
+                    "course_id": row.Courses.course_id,
+                    "course_title_id": row.Courses.course_title_id,
+                    "course_title": row.Courses.course_title,
+                    "units": row.Courses.units,
+                    "course_level": row.Courses.course_level,
+                    "combine_with": row.Courses.combine_with
+                })
 
             point_info = {
-                **points,
+                # **points,
+                'user_id': points.user_id,
+                'year': points.year,
+                'previous_balance': points.previous_balance,
+                'ending_balance': points.ending_balance,
+                'credit_due': points.credit_due,
+                'grad_count': points.grad_count,
+                'grad_students': points.grad_students,
                 'teaching_point': get_yearly_teaching_points(user_id, year),
-                'grad_point': get_grad_mentoring_points(points['grad_count']),
+                'grad_point': get_grad_mentoring_points(points.grad_count),
                 'exception_point': get_yearly_exception_points(user_id, year)
             }
         exceptions = get_faculty_yearly_exceptions(user_id, year)
@@ -651,124 +734,181 @@ def get_faculty_point_breakdown(id):
 
 def insert_users(user_name, user_email, user_ucinetid, is_admin):
     db = get_db()
-    db.execute(
-        'INSERT INTO users (user_name, user_email, user_ucinetid, admin)'
-        ' VALUES (?, ?, ?, ?)',
-        (user_name, user_email, user_ucinetid, is_admin)
-    )
-    db.commit()
+    # db.execute(
+    #     'INSERT INTO users (user_name, user_email, user_ucinetid, admin)'
+    #     ' VALUES (?, ?, ?, ?)',
+    #     (user_name, user_email, user_ucinetid, is_admin)
+    # )
+    # db.commit()
+    db.session.add(Users(user_name=user_name, user_email=user_email, user_ucinetid=user_ucinetid, admin=is_admin))
+    db.session.commit()
 
 def insert_faculty_status(user_ucinetid, start_year, role, active_status):
     db = get_db()
     user = get_exist_user(user_ucinetid)
-    user_id = user['user_id']
-    db.execute(
-        'INSERT INTO faculty_status (user_id, start_year, role, active_status)'
-        ' VALUES (?, ?, ?, ?)',
-        (user_id, start_year, role, active_status)
-    )
-    db.commit()
+    try:
+        user_id = user['user_id']
+    except:
+        user_id = user.user_id
+    # db.execute(
+    #     'INSERT INTO faculty_status (user_id, start_year, role, active_status)'
+    #     ' VALUES (?, ?, ?, ?)',
+    #     (user_id, start_year, role, active_status)
+    # )
+    # db.commit()
+    db.session.add(FacultyStatus(user_id=user_id, start_year=start_year, role=role, active_status=active_status))
+    db.session.commit()
 
 def insert_faculty_point_info(user_id, year, previous_balance, grad_count, grad_students, credit_due):
     ending_balance = calculate_yearly_ending_balance(user_id, year, grad_count, previous_balance, credit_due)
 
     db = get_db()
-    db.execute(
-        'INSERT INTO faculty_point_info (user_id, year, previous_balance, ending_balance, credit_due, grad_count, grad_students)'
-        ' VALUES (?, ?, ?, ?, ?, ?, ?)',
-        (user_id, year, previous_balance, ending_balance, credit_due, grad_count, grad_students)
-    )
-    db.commit()
+    # db.execute(
+    #     'INSERT INTO faculty_point_info (user_id, year, previous_balance, ending_balance, credit_due, grad_count, grad_students)'
+    #     ' VALUES (?, ?, ?, ?, ?, ?, ?)',
+    #     (user_id, year, previous_balance, ending_balance, credit_due, grad_count, grad_students)
+    # )
+    # db.commit()
+    db.session.add(FacultyPointInfo(user_id=user_id, year=year, previous_balance=previous_balance, ending_balance=ending_balance, credit_due=credit_due, grad_count=grad_count, grad_students=grad_students))
+    db.session.commit()
 
 def insert_exception(user_id, year, exception_category, exception_message, points):
     db = get_db()
-    cursor = db.cursor()
-    cursor.execute(
-        'INSERT INTO exceptions (user_id, year, exception_category, message, points)'
-        ' VALUES (?, ?, ?, ?, ?)',
-        (user_id, year, exception_category, exception_message, points)
-    )
+    # cursor = db.cursor()
+    # cursor.execute(
+    #     'INSERT INTO exceptions (user_id, year, exception_category, message, points)'
+    #     ' VALUES (?, ?, ?, ?, ?)',
+    #     (user_id, year, exception_category, exception_message, points)
+    # )
 
-    exception_id = cursor.lastrowid
+    # # "lastrowid" attribute holds the value of the last inserted row's primary key
+    # exception_id = cursor.lastrowid
+    # db.commit()
+    new_exception = Exceptions(user_id=user_id, year=year, exception_category=exception_category, message=exception_message, points=points)
+    db.session.add(new_exception)
+    db.session.commit()
+
+    exception_id = new_exception.exception_id
+
     log_category = exception_category
     if len(exception_message) > 0:
         log_category += '_' + exception_message
-    owner = 'Admin: ' + g.user['user_name']
+    owner = 'Admin: ' + g.user.user_name
     insert_log(owner, user_id, exception_id, log_category)
-    db.commit()
+    
 
 def update_users(name, email, ucinetid, user_id):
     db = get_db()
-    db.execute(
-        'UPDATE users'
-        ' SET user_name = ?, user_email = ?, user_ucinetid = ?'
-        ' WHERE user_id = ?',
-        (name, email, ucinetid, user_id)
-    )
-    db.commit()
+    # db.execute(
+    #     'UPDATE users'
+    #     ' SET user_name = ?, user_email = ?, user_ucinetid = ?'
+    #     ' WHERE user_id = ?',
+    #     (name, email, ucinetid, user_id)
+    # )
+    # db.commit()
+    stmt = db.update(Users).\
+    values(user_name=name, user_email=email, user_ucinetid=ucinetid).\
+    where(Users.user_id == user_id)
+    db.session.execute(stmt)
+    db.session.commit()
+
 
 def update_faculty_role(user_id, start_year, cur_year, role):
     db = get_db()
     if cur_year == start_year:
-        db.execute(
-            'UPDATE faculty_status SET role = ?'
-            ' WHERE user_id = ? AND start_year = ?',
-            (role, user_id, start_year)
-        )
+        # db.execute(
+        #     'UPDATE faculty_status SET role = ?'
+        #     ' WHERE user_id = ? AND start_year = ?',
+        #     (role, user_id, start_year)
+        # )
+        stmt = db.update(FacultyStatus).\
+        values(role=role).\
+        where((FacultyStatus.user_id == user_id) & (FacultyStatus.start_year == start_year))
+        db.session.execute(stmt)
+        db.session.commit()
     else:
-        db.execute(
-            'UPDATE faculty_status SET end_year = ?'
-            ' WHERE user_id = ? AND start_year = ?',
-            (cur_year, user_id, start_year)
-        )
-        db.execute(
-            'INSERT INTO faculty_status (user_id, start_year, active_status, role)'
-            ' VALUES (?, ?, ?, ?)',
-            (user_id, cur_year, 1, role)
-        )
-    db.commit()
+        # db.execute(
+        #     'UPDATE faculty_status SET end_year = ?'
+        #     ' WHERE user_id = ? AND start_year = ?',
+        #     (cur_year, user_id, start_year)
+        # )
+        stmt = db.update(FacultyStatus).\
+        values(end_year=cur_year).\
+        where((FacultyStatus.user_id == user_id) & (FacultyStatus.start_year == start_year))
+        db.session.execute(stmt)
+        db.session.commit()
+        
+        # db.execute(
+        #     'INSERT INTO faculty_status (user_id, start_year, active_status, role)'
+        #     ' VALUES (?, ?, ?, ?)',
+        #     (user_id, cur_year, 1, role)
+        # )
+        db.session.add(FacultyStatus(user_id=user_id, start_year=cur_year, active_status=1, role=role))
+        db.session.commit()
+    # db.commit()
 
 def update_faculty_status(user_id, start_year, cur_year, role, status):
     db = get_db()
     if cur_year == start_year:
-        db.execute(
-            'UPDATE faculty_status SET active_status = ?'
-            ' WHERE user_id = ? AND start_year = ?',
-            (status, user_id, start_year)
-        )
+        # db.execute(
+        #     'UPDATE faculty_status SET active_status = ?'
+        #     ' WHERE user_id = ? AND start_year = ?',
+        #     (status, user_id, start_year)
+        # )
+        stmt = db.update(FacultyStatus).\
+        values(active_status=status).\
+        where((FacultyStatus.user_id == user_id) & (FacultyStatus.start_year == start_year))
+        db.session.execute(stmt)
+        db.session.commit()     
     else:
-        db.execute(
-            'UPDATE faculty_status SET end_year = ?'
-            ' WHERE user_id = ? AND start_year = ?',
-            (cur_year, user_id, start_year)
-        )
-        db.execute(
-            'INSERT INTO faculty_status (user_id, start_year, active_status, role)'
-            ' VALUES (?, ?, ?, ?)',
-            (user_id, cur_year, status, role)
-        )
-    db.commit()
+        # db.execute(
+        #     'UPDATE faculty_status SET end_year = ?'
+        #     ' WHERE user_id = ? AND start_year = ?',
+        #     (cur_year, user_id, start_year)
+        # )
+        stmt = db.update(FacultyStatus).\
+        values(end_year=cur_year).\
+        where((FacultyStatus.user_id == user_id) & (FacultyStatus.start_year == start_year))
+        db.session.execute(stmt) 
+        db.session.commit()
+
+        # db.execute(
+        #     'INSERT INTO faculty_status (user_id, start_year, active_status, role)'
+        #     ' VALUES (?, ?, ?, ?)',
+        #     (user_id, cur_year, status, role)
+        # )
+        db.session.add(FacultyStatus(user_id=user_id, start_year=cur_year, active_status=status, role=role))
+        db.session.commit()
+    # db.commit()
 
     status_msg = 'Active' if status == 1 else 'Inactive'
-    owner = 'Admin: ' + g.user['user_name']
+    owner = 'Admin: ' + g.user.user_name
     insert_log(owner, user_id, None, 'Update faculty member status to "{}"'.format(status_msg))
 
 def update_faculty_grad_info(user_id, year, grad_count, grad_students):
     db = get_db()
-    db.execute(
-        'UPDATE faculty_point_info SET grad_count = ?, grad_students = ?'
-        ' WHERE user_id = ? AND year = ?',
-        (grad_count, grad_students, user_id, year)
-    )
-    db.commit()
+    # db.execute(
+    #     'UPDATE faculty_point_info SET grad_count = ?, grad_students = ?'
+    #     ' WHERE user_id = ? AND year = ?',
+    #     (grad_count, grad_students, user_id, year)
+    # )
+    # db.commit()
+    stmt = db.update(FacultyPointInfo).\
+    values(grad_count=grad_count, grad_students=grad_students).\
+    where((FacultyPointInfo.user_id == user_id) & (FacultyPointInfo.year == year))
+    db.session.execute(stmt)
+    db.session.commit()
 
 def get_upload_points_latest_time():
     db = get_db()
-    res = db.execute(
-        """SELECT * FROM logs
-         WHERE log_category LIKE '%Upload professors point%'
-         ORDER BY created DESC LIMIT 1"""
-    ).fetchone()
-    if res is None:
+    # res = db.execute(
+    #     """SELECT * FROM logs
+    #      WHERE log_category LIKE '%Upload professors point%'
+    #      ORDER BY created DESC LIMIT 1"""
+    # ).fetchone()
+    stmt = db.select(Logs).where(Logs.log_category.like('%Upload professors point%')).order_by(Logs.created.desc()).limit(1)
+    try:
+        res = db.session.execute(stmt).scalar_one()
+    except:    
         return 'No record'
-    return convert_local_timezone(res['created'])
+    return convert_local_timezone(res.created)

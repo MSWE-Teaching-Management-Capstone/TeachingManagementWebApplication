@@ -89,7 +89,7 @@ def login_callback():
 @auth.route("/redirect_to_homepage")
 @login_required
 def redirect_to_homepage():
-    if g.user['admin']:
+    if g.user.admin:
         return redirect('/faculty/points')
     else:
         return redirect('/faculty')

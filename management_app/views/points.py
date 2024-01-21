@@ -1,5 +1,6 @@
 from management_app.db import get_db
 from flask import flash
+from management_app.models import *
 
 def calculate_teaching_point_val(course_title_id, num_of_enrollment, offload_or_recall_flag, year, quarter, user_id, num_of_co_taught):
     # rules: 
@@ -17,29 +18,32 @@ def calculate_teaching_point_val(course_title_id, num_of_enrollment, offload_or_
     # Category 4: 0.25 points (max 0.5 points per year)
 
     db = get_db()
-    rows = db.execute(
-        'SELECT * FROM rules'
-    ).fetchall()
+    # rows = db.execute(
+    #     'SELECT * FROM rules'
+    # ).fetchall()
+    rows = db.session.execute(db.select(Rules)).scalars()
 
     for row in rows:
-        if row['rule_name'] == "Category 0":
-            point_c0 = row['value']
-        if row['rule_name'] == "Category 1":
-            point_c1 = row['value']
-        if row['rule_name'] == "Category 2":
-            point_c2 = row['value']
-        if row['rule_name'] == "Category 3":
-            point_c3 = row['value']
-        if row['rule_name'] == "Category 4":
-            point_c4 = row['value']
+        if row.rule_name == "Category 0":
+            point_c0 = row.value
+        if row.rule_name == "Category 1":
+            point_c1 = row.value
+        if row.rule_name == "Category 2":
+            point_c2 = row.value
+        if row.rule_name == "Category 3":
+            point_c3 = row.value
+        if row.rule_name == "Category 4":
+            point_c4 = row.value
 
-    row = db.execute(
-        'SELECT units, course_level FROM courses '
-        ' WHERE course_title_id = ?', (course_title_id,)
-    ).fetchone()    
+    # row = db.execute(
+    #     'SELECT units, course_level FROM courses '
+    #     ' WHERE course_title_id = ?', (course_title_id,)
+    # ).fetchone()
+    stmt = db.select(Courses).where(Courses.course_title_id == course_title_id)
+    row = db.session.execute(stmt).scalar_one()
 
-    units = row['units']
-    course_level = row['course_level']
+    units = row.units
+    course_level = row.course_level
 
     # rules #1
     if course_title_id[-1] == "P":
@@ -47,10 +51,13 @@ def calculate_teaching_point_val(course_title_id, num_of_enrollment, offload_or_
             return point_c2
         # if previous_yearly_balance < 0: generate warning but don't stop this action
         if get_previous_year_point_balance(year, quarter, user_id) < 0:
-            ucinetid = db.execute(
-                'SELECT user_ucinetid FROM users'
-                ' WHERE user_id = ?', (user_id,)
-            ).fetchone()[0]
+            # ucinetid = db.execute(
+            #     'SELECT user_ucinetid FROM users'
+            #     ' WHERE user_id = ?', (user_id,)
+            # ).fetchone()[0]
+            stmt = db.select(Users.user_ucinetid).where(Users.user_id == user_id)
+            ucinetid = db.session.execute(stmt).scalar()
+
             warning_msg = f"Warning: User {ucinetid} teaches offload with a negative point balance."
             flash(warning_msg, 'warning')
         return 0
@@ -72,22 +79,41 @@ def calculate_teaching_point_val(course_title_id, num_of_enrollment, offload_or_
         if quarter == 1:
             return earned_pnt
         elif quarter == 2:
-            res = db.execute("""
-                SELECT SUM(st.teaching_point_val) AS total
-                FROM scheduled_teaching AS st JOIN courses AS c ON st.course_title_id = c.course_title_id
-                WHERE user_id = ? AND c.units = ? AND year = ? AND quarter = ?
-            """, (user_id, 2, year - 1, 1)).fetchone()
+            # res = db.execute("""
+            #     SELECT SUM(st.teaching_point_val) AS total
+            #     FROM scheduled_teaching AS st JOIN courses AS c ON st.course_title_id = c.course_title_id
+            #     WHERE user_id = ? AND c.units = ? AND year = ? AND quarter = ?
+            # """, (user_id, 2, year - 1, 1)).fetchone()
+            stmt = db.select(db.func.sum(ScheduledTeaching.teaching_point_val)).\
+                join(Courses, ScheduledTeaching.course_title_id == Courses.course_title_id).\
+                where((ScheduledTeaching.user_id == user_id) &
+                    (Courses.units == 2) &
+                    (ScheduledTeaching.year == year - 1) &
+                    (ScheduledTeaching.quarter == 1))
+
+            res = db.session.execute(stmt).scalar()
         else:
-            res = db.execute("""
-                SELECT SUM(st.teaching_point_val) AS total
-                FROM scheduled_teaching AS st JOIN courses AS c ON st.course_title_id = c.course_title_id
-                WHERE user_id = ? AND c.units = ? AND ((year = ? AND quarter = ?) OR (year = ? AND quarter = ?))
-            """, (user_id, 2, year - 1, 1, year, 2)).fetchone()
+            # res = db.execute("""
+            #     SELECT SUM(st.teaching_point_val) AS total
+            #     FROM scheduled_teaching AS st JOIN courses AS c ON st.course_title_id = c.course_title_id
+            #     WHERE user_id = ? AND c.units = ? AND ((year = ? AND quarter = ?) OR (year = ? AND quarter = ?))
+            # """, (user_id, 2, year - 1, 1, year, 2)).fetchone()
+            stmt = db.select(db.func.sum(ScheduledTeaching.teaching_point_val)).\
+                join(Courses, ScheduledTeaching.course_title_id == Courses.course_title_id).\
+                where((ScheduledTeaching.user_id == user_id) &
+                    (Courses.units == 2) &
+                    (
+                        ((ScheduledTeaching.year == year - 1) & (ScheduledTeaching.quarter == 1)) |
+                        ((ScheduledTeaching.year == year) & (ScheduledTeaching.quarter == 2))
+                    )
+                )
+
+            res = db.session.execute(stmt).scalar()
 
         # a faculty member can only have a max of 0.5 points per year for category 4
-        total = res['total']
+        total = res
         if total is not None:
-            sum_of_Cat4_pnt = res['total']
+            sum_of_Cat4_pnt = res
             if sum_of_Cat4_pnt >= 0.5:
                 return 0
             elif sum_of_Cat4_pnt + earned_pnt > 0.5:
@@ -111,12 +137,14 @@ def get_faculty_roles_credit_due():
     # { Role1: point1, Role2: point2... }
     faculty_roles = {}
     db = get_db()
-    rows = db.execute('SELECT * FROM rules').fetchall()
+    # rows = db.execute('SELECT * FROM rules').fetchall()
+    rows = db.session.execute(db.select(Rules)).scalars()
+
     for row in rows:
         if row is not None:
-            if 'role' in row['rule_name'].lower():
-                key = row['rule_name'].split('-')[1].lower()
-                faculty_roles[key] = row['value']
+            if 'role' in row.rule_name.lower():
+                key = row.rule_name.split('-')[1].lower()
+                faculty_roles[key] = row.value
     return faculty_roles
 
 def get_yearly_teaching_points(user_id, start_year):
@@ -125,12 +153,24 @@ def get_yearly_teaching_points(user_id, start_year):
     # e.g., year 2020 should be 2020-2021 (including 2020 Fall(1) - 2021 Winter(2) & Spring(3))
     end_year = start_year + 1
     db = get_db()
-    res = db.execute("""
-        SELECT SUM(teaching_point_val) AS total
-        FROM scheduled_teaching
-        WHERE user_id = ? AND ((year = ? AND quarter = 1) OR (year = ? AND quarter = 2) OR (year = ? AND quarter = 3))
-    """, (user_id, start_year, end_year, end_year)).fetchone()
-    return 0 if res['total'] is None else res['total']
+    # res = db.execute("""
+    #     SELECT SUM(teaching_point_val) AS total
+    #     FROM scheduled_teaching
+    #     WHERE user_id = ? AND ((year = ? AND quarter = 1) OR (year = ? AND quarter = 2) OR (year = ? AND quarter = 3))
+    # """, (user_id, start_year, end_year, end_year)).fetchone()
+    stmt = db.select(db.func.sum(ScheduledTeaching.teaching_point_val)).\
+        where(
+            (ScheduledTeaching.user_id == user_id) &
+            (
+                (ScheduledTeaching.year == start_year) & (ScheduledTeaching.quarter == 1) |
+                (ScheduledTeaching.year == end_year) & (ScheduledTeaching.quarter == 2) |
+                (ScheduledTeaching.year == end_year) & (ScheduledTeaching.quarter == 3)
+            )
+        )
+
+    res = db.session.execute(stmt).scalar()
+
+    return 0 if res is None else res
 
 def get_grad_mentoring_points(grad_count):
     grad_points = grad_count * 0.125
@@ -143,11 +183,14 @@ def get_grad_mentoring_points(grad_count):
 def get_yearly_exception_points(user_id, year):
     exception_points = 0
     db = get_db()
-    rows = db.execute(
-        'SELECT points FROM exceptions WHERE user_id = ? AND year = ?', (user_id, year)
-    ).fetchall()
+    # rows = db.execute(
+    #     'SELECT points FROM exceptions WHERE user_id = ? AND year = ?', (user_id, year)
+    # ).fetchall()
+    stmt = db.select(Exceptions.points).where((Exceptions.user_id == user_id) & (Exceptions.year == year))
+    rows = db.session.execute(stmt).scalars()
+
     for row in rows:
-        exception_points += row['points']
+        exception_points += row
     return exception_points
 
 def calculate_yearly_ending_balance(user_id, year, grad_count, previous_balance, credit_due):
@@ -160,10 +203,13 @@ def calculate_yearly_ending_balance(user_id, year, grad_count, previous_balance,
 
 def get_latest_academic_year():
     db = get_db()
-    res = db.execute(
-        'SELECT DISTINCT year FROM faculty_point_info ORDER BY year DESC LIMIT 1'
-    ).fetchone()
-    return res['year'] if res is not None else None
+    # res = db.execute(
+    #     'SELECT DISTINCT year FROM faculty_point_info ORDER BY year DESC LIMIT 1'
+    # ).fetchone()
+    stmt = db.select(FacultyPointInfo.year).distinct().order_by(FacultyPointInfo.year.desc()).limit(1)
+    res = db.session.execute(stmt).scalar()
+
+    return res if res is not None else None
 
 def update_yearly_ending_balance(user_id, year):
     # Note that year parameter represents the start of an an academic year
@@ -176,18 +222,21 @@ def update_yearly_ending_balance(user_id, year):
 
     diff = 0
     for y in range(year, latest_year+1):
-        row = db.execute(
-            'SELECT * FROM faculty_point_info WHERE user_id = ? AND year = ?',
-            (user_id, y)
-        ).fetchone()
+        # row = db.execute(
+        #     'SELECT * FROM faculty_point_info WHERE user_id = ? AND year = ?',
+        #     (user_id, y)
+        # ).fetchone()
+        stmt = db.select(FacultyPointInfo).where(FacultyPointInfo.user_id == user_id, FacultyPointInfo.year == y)
+
+        row = db.session.execute(stmt).scalar()
 
         # Use stored credit_due in faculty_point_info table to re-calculate
         # instead of rule_name stored in rule table due to rules of point policy may change
         if row is not None:
-            grad_count = row['grad_count']
-            credit_due = row['credit_due']
-            previous_balance = row['previous_balance']
-            ending_balance = row['ending_balance']
+            grad_count = row.grad_count
+            credit_due = row.credit_due
+            previous_balance = row.previous_balance
+            ending_balance = row.ending_balance
 
             if y == year:
                 new_ending_balance = calculate_yearly_ending_balance(user_id, y, grad_count, previous_balance, credit_due)
@@ -199,12 +248,17 @@ def update_yearly_ending_balance(user_id, year):
 
             previous_balance = round(previous_balance, 4)
             ending_balance = round(ending_balance, 4)
-            db.execute(
-                'UPDATE faculty_point_info SET previous_balance = ?, ending_balance = ?'
-                ' WHERE user_id = ? AND year = ?',
-                (previous_balance, ending_balance, user_id, y)
-            )
-            db.commit()
+            # db.execute(
+            #     'UPDATE faculty_point_info SET previous_balance = ?, ending_balance = ?'
+            #     ' WHERE user_id = ? AND year = ?',
+            #     (previous_balance, ending_balance, user_id, y)
+            # )
+            # db.commit()
+            stmt = db.update(FacultyPointInfo).values(previous_balance=previous_balance, ending_balance=ending_balance).\
+            where(FacultyPointInfo.user_id == user_id, FacultyPointInfo.year == y)           
+
+            db.session.execute(stmt)
+            db.session.commit()
     return
 
 def get_previous_year_point_balance(year, quarter, user_id):    
@@ -214,11 +268,17 @@ def get_previous_year_point_balance(year, quarter, user_id):
         academic_year = year-1
 
     db = get_db()
-    previous_balance = db.execute(
-        'SELECT previous_balance FROM faculty_point_info'
-        ' WHERE user_id = ? AND year = ?', (user_id, academic_year)
-    ).fetchone()
+    # previous_balance = db.execute(
+    #     'SELECT previous_balance FROM faculty_point_info'
+    #     ' WHERE user_id = ? AND year = ?', (user_id, academic_year)
+    # ).fetchone()
+    stmt = db.select(FacultyPointInfo.previous_balance).\
+        where((FacultyPointInfo.user_id == user_id) & (FacultyPointInfo.year == academic_year))
+
+    previous_balance = db.session.execute(stmt).scalar_one()
+
+
     if previous_balance is None:
         return 0
     else:
-        return previous_balance['previous_balance']
+        return previous_balance

@@ -7,6 +7,8 @@ from management_app.views.auth import login_required
 from management_app.db import get_db
 from management_app.views.utils import download_file, upload_file, remove_upload_file, get_upload_filepath, insert_log, convert_local_timezone, BASE_DIR, DOWNLOAD_FOLDER
 from management_app.views.points import calculate_teaching_point_val, update_yearly_ending_balance, get_latest_academic_year
+from management_app.models import *
+from sqlalchemy.orm.exc import NoResultFound
 
 courses = Blueprint('courses', __name__, url_prefix='/courses')
 
@@ -18,9 +20,15 @@ def offerings():
         upload_time = get_latest_scheduled_teaching_upload_time()
         db = get_db()
         courses = []       
-        rows = db.execute(
-            'SELECT DISTINCT year FROM scheduled_teaching ORDER BY year ASC'
-        ).fetchall()
+        # rows = db.execute(
+        #     'SELECT DISTINCT year FROM scheduled_teaching ORDER BY year ASC'
+        # ).fetchall()
+        stmt = db.select(db.distinct(ScheduledTeaching.year)).order_by(ScheduledTeaching.year.asc())
+        res = db.session.execute(stmt).scalars()
+
+        rows = []
+        for year in res:
+            rows.append(year)
 
         if rows != []:
             year_options = generate_year_options(rows)            
@@ -38,7 +46,12 @@ def offerings():
 @login_required
 def catalog():
     db = get_db()    
-    courses = db.execute('SELECT * FROM courses').fetchall()
+    # courses = db.execute('SELECT * FROM courses').fetchall()
+    rows = db.session.execute(db.select(Courses)).scalars()
+    courses = []
+    for row in rows:
+        courses.append({"course_id": row.course_id, "course_title_id": row.course_title_id, "course_title": row.course_title, "units": row.units, "course_level": row.course_level, "combine_with": row.combine_with})
+
     return render_template('courses/catalog.html', courses=courses)
 
 
@@ -47,10 +60,12 @@ def catalog():
 def download_template(filename):
     if request.method == 'GET':
         db = get_db()
-        res = db.execute('SELECT COUNT(*) AS cnt FROM scheduled_teaching').fetchone()
+        # res = db.execute('SELECT COUNT(*) AS cnt FROM scheduled_teaching').fetchone()
+        stmt = db.select(db.func.count()).select_from(ScheduledTeaching)
+        res = db.session.execute(stmt).scalar()
 
         # Prepopulate schedule_teaching template after the first time upload        
-        if res["cnt"] != 0:
+        if res != 0:
             prepopulate_schedule_teaching_template()
             
         return download_file(filename)
@@ -75,7 +90,7 @@ def upload_user_file():
         for row_dict in offering_tmp:
             insert_or_update_scheduled_teaching_for_each_user(row_dict["user_UCINetID_list"], row_dict["num_of_enrollment"], row_dict["user_id_and_academic_year_set"], row_dict["academic_year"], row_dict["combine_with"], row_dict["rows_dict"], row_dict["course_title_id"], row_dict["year"], row_dict["quarter"], row_dict["course_sec"], row_dict["offload_or_recall_flag"], row_dict["num_of_co_taught"])
 
-        insert_log('Admin: ' + g.user['user_name'], None, None, "Upload scheduled teaching file")
+        insert_log('Admin: ' + g.user.user_name, None, None, "Upload scheduled teaching file")
         flash('Upload scheduled teaching file successfully!', 'success')
 
         # rules #5: Combined grad/undergraduate classes
@@ -120,7 +135,7 @@ def create_offering():
         rows_dict = {}
         insert_or_update_scheduled_teaching_for_each_user(user_UCINetID_list, num_of_enrollment, user_id_and_academic_year_set, academic_year, combine_with, rows_dict, course_title_id, year, quarter, course_sec, offload_or_recall_flag, num_of_co_taught)
 
-        insert_log('Admin: ' + g.user['user_name'], user_id, None, "Add scheduled teaching")
+        insert_log('Admin: ' + g.user.user_name, user_id, None, "Add scheduled teaching")
         flash('Add scheduled teaching data successfully!', 'success')
 
         # rules #5: Combined grad/undergraduate classes
@@ -147,14 +162,26 @@ def update_offering(user_id, year, quarter, course_title_id, course_sec):
     if request.method == 'POST':
         num_of_enrollment = request.form['enrollment']
         db = get_db()
-        db.execute(
-            'UPDATE scheduled_teaching SET enrollment = ?'
-            ' WHERE user_id = ? AND year = ? AND quarter = ? AND course_title_id = ? AND course_sec = ?', 
-            (num_of_enrollment, user_id, year, quarter, course_title_id, course_sec)
-        )
-        db.commit()
+        # db.execute(
+        #     'UPDATE scheduled_teaching SET enrollment = ?'
+        #     ' WHERE user_id = ? AND year = ? AND quarter = ? AND course_title_id = ? AND course_sec = ?', 
+        #     (num_of_enrollment, user_id, year, quarter, course_title_id, course_sec)
+        # )
+        # db.commit()
+        stmt = db.update(ScheduledTeaching).\
+                values(enrollment=num_of_enrollment).\
+                where(
+                    (ScheduledTeaching.user_id == user_id) &
+                    (ScheduledTeaching.year == year) &
+                    (ScheduledTeaching.quarter == quarter) &
+                    (ScheduledTeaching.course_title_id == course_title_id) &
+                    (ScheduledTeaching.course_sec == course_sec)
+                )
 
-        insert_log('Admin: ' + g.user['user_name'], user_id, None, "Edit scheduled teaching")
+        db.session.execute(stmt)
+        db.session.commit()
+
+        insert_log('Admin: ' + g.user.user_name, user_id, None, "Edit scheduled teaching")
         flash('Edit scheduled teaching data successfully!', 'success')
 
         academic_year = get_academic_year(year, quarter)
@@ -168,14 +195,24 @@ def update_offering(user_id, year, quarter, course_title_id, course_sec):
 @login_required
 def delete_offering(user_id, year, quarter, course_title_id, course_sec):
     db = get_db()
-    db.execute(
-        'DELETE FROM scheduled_teaching '
-        ' WHERE user_id = ? AND year = ? AND quarter = ? AND course_title_id = ? AND course_sec = ?', 
-        (user_id, year, quarter, course_title_id, course_sec)
-    )
-    db.commit()
+    # db.execute(
+    #     'DELETE FROM scheduled_teaching '
+    #     ' WHERE user_id = ? AND year = ? AND quarter = ? AND course_title_id = ? AND course_sec = ?', 
+    #     (user_id, year, quarter, course_title_id, course_sec)
+    # )
+    # db.commit()
+    stmt = db.delete(ScheduledTeaching).\
+        where(
+            (ScheduledTeaching.user_id == user_id) &
+            (ScheduledTeaching.year == year) &
+            (ScheduledTeaching.quarter == quarter) &
+            (ScheduledTeaching.course_title_id == course_title_id) &
+            (ScheduledTeaching.course_sec == course_sec)
+        )
+    db.session.execute(stmt)
+    db.session.commit()
 
-    insert_log('Admin: ' + g.user['user_name'], user_id, None, "Delete scheduled teaching")
+    insert_log('Admin: ' + g.user.user_name, user_id, None, "Delete scheduled teaching")
     flash('Delete scheduled teaching data successfully!', 'success')
 
     academic_year = get_academic_year(year, quarter)
@@ -201,12 +238,23 @@ def add_course():
             flash(error, 'error')
         else:
             db = get_db()
-            db.execute("""
-                INSERT INTO courses (course_title_id, course_title, units, course_level, combine_with)
-                VALUES (?, ?, ?, ?, ?)
-            """, (title_id, title, units, level, combine_with))
-            db.commit()
-            insert_log('Admin: ' + g.user['user_name'], None, None, f"Added new course ({title_id})")
+            # db.execute("""
+            #     INSERT INTO courses (course_title_id, course_title, units, course_level, combine_with)
+            #     VALUES (?, ?, ?, ?, ?)
+            # """, (title_id, title, units, level, combine_with))
+            # db.commit()
+            stmt = db.insert(Courses).values(
+                course_title_id=title_id,
+                course_title=title,
+                units=units,
+                course_level=level,
+                combine_with=combine_with
+            )
+
+            db.session.execute(stmt)
+            db.session.commit()
+
+            insert_log('Admin: ' + g.user.user_name, None, None, f"Added new course ({title_id})")
             flash('Course added successfully!', 'success')
    
     return render_template('courses/add-course.html')
@@ -216,7 +264,8 @@ def add_course():
 def edit_course(id):
     db = get_db()
 
-    course = db.execute('SELECT * FROM courses WHERE course_id = ?', (id,)).fetchone()
+    # course = db.execute('SELECT * FROM courses WHERE course_id = ?', (id,)).fetchone()
+    course = db.session.execute(db.select(Courses).where(Courses.course_id == id)).scalar_one()
 
     if request.method == 'POST':
         title = request.form['title']
@@ -224,14 +273,22 @@ def edit_course(id):
         units = request.form['units']
         combine_with = request.form['combine-with']
 
-        db.execute("""
-            UPDATE courses
-            SET course_title = ?, course_level = ?, units = ?, combine_with = ?
-            WHERE course_id = ?
-        """, (title, level, units, combine_with, id))
-        db.commit()
-        update_teaching_point_balances(course['course_title_id'])
-        insert_log('Admin: ' + g.user['user_name'], None, None, f"Edited course ({course['course_title_id']})")
+        # db.execute("""
+        #     UPDATE courses
+        #     SET course_title = ?, course_level = ?, units = ?, combine_with = ?
+        #     WHERE course_id = ?
+        # """, (title, level, units, combine_with, id))
+        # db.commit()
+        stmt = db.update(Courses).\
+            values(course_title=title, course_level=level, units=units, combine_with=combine_with).\
+            where(Courses.course_id == id)            
+
+        db.session.execute(stmt)
+        db.session.commit()
+
+
+        update_teaching_point_balances(course.course_title_id)
+        insert_log('Admin: ' + g.user.user_name, None, None, f"Edited course ({course.course_title_id})")
         flash('Update successfully!', 'success')
 
     return render_template('courses/edit-course.html', course=course)
@@ -239,45 +296,79 @@ def edit_course(id):
 
 def is_course_title_id_taken(title_id):
     db = get_db()
-    res = db.execute('SELECT COUNT(*) AS count FROM courses WHERE course_title_id = ?', (title_id,)).fetchone()
-    return res['count'] > 0
+    # res = db.execute('SELECT COUNT(*) AS count FROM courses WHERE course_title_id = ?', (title_id,)).fetchone()
+    res = db.session.execute(db.select(db.func.count()).where(Courses.course_title_id == title_id)).scalar()
+
+    return res > 0
 
 def update_teaching_point_balances(title_id):
     db = get_db()
     start_year = get_latest_academic_year()
     end_year = start_year + 1
     updated_users = set()
-    offerings = db.execute("""
-        SELECT *
-        FROM scheduled_teaching
-        WHERE ((year = ? AND quarter = 1) OR (year = ? AND (quarter = 2 OR quarter = 3))) AND course_title_id = ?
-    """, (start_year, end_year, title_id)).fetchall()
+    # offerings = db.execute("""
+    #     SELECT *
+    #     FROM scheduled_teaching
+    #     WHERE ((year = ? AND quarter = 1) OR (year = ? AND (quarter = 2 OR quarter = 3))) AND course_title_id = ?
+    # """, (start_year, end_year, title_id)).fetchall()
+    stmt = db.select(ScheduledTeaching).\
+        where(
+            (((ScheduledTeaching.year == start_year) & (ScheduledTeaching.quarter == 1)) | ((ScheduledTeaching.year == end_year) & ((ScheduledTeaching.quarter == 2) | (ScheduledTeaching.quarter == 3)))) & (ScheduledTeaching.course_title_id == title_id))
+    offerings = db.session.execute(stmt).scalars()
 
     for offering in offerings:
-        co_taught = db.execute("""
-            SELECT COUNT(DISTINCT user_id) AS num
-            FROM scheduled_teaching
-            GROUP BY year, quarter, course_title_id
-            HAVING year = ? AND quarter = ? AND course_title_id = ?
-        """, (offering['year'], offering['quarter'], offering['course_title_id'])).fetchone()
-        value = calculate_teaching_point_val(
-            offering['course_title_id'],
-            offering['enrollment'],
-            offering['offload_or_recall_flag'],
-            offering['year'],
-            offering['quarter'],
-            offering['user_id'],
-            co_taught['num']
+        # co_taught = db.execute("""
+        #     SELECT COUNT(DISTINCT user_id) AS num
+        #     FROM scheduled_teaching
+        #     GROUP BY year, quarter, course_title_id
+        #     HAVING year = ? AND quarter = ? AND course_title_id = ?
+        # """, (offering.year, offering.quarter, offering.course_title_id)).fetchone()
+        stmt = db.select(
+            db.func.count(db.func.DISTINCT(ScheduledTeaching.user_id))
+        ).where(
+            (ScheduledTeaching.year == offering.year) &
+            (ScheduledTeaching.quarter == offering.quarter) &
+            (ScheduledTeaching.course_title_id == offering.course_title_id)
+        ).group_by(
+            ScheduledTeaching.year,
+            ScheduledTeaching.quarter,
+            ScheduledTeaching.course_title_id
         )
-        if value != offering['teaching_point_val']:
-            db.execute("""
-                UPDATE scheduled_teaching
-                SET teaching_point_val = ?
-                WHERE user_id = ? AND year = ? AND quarter = ? AND course_title_id = ? AND course_sec = ?
-            """, (value, offering['user_id'], offering['year'], offering['quarter'], offering['course_title_id'], offering['course_sec']))
-            updated_users.add(offering['user_id'])
+
+        co_taught = db.session.execute(stmt).scalar()
+
+
+        value = calculate_teaching_point_val(
+            offering.course_title_id,
+            offering.enrollment,
+            offering.offload_or_recall_flag,
+            offering.year,
+            offering.quarter,
+            offering.user_id,
+            co_taught
+        )
+        if value != offering.teaching_point_val:
+            # db.execute("""
+            #     UPDATE scheduled_teaching
+            #     SET teaching_point_val = ?
+            #     WHERE user_id = ? AND year = ? AND quarter = ? AND course_title_id = ? AND course_sec = ?
+            # """, (value, offering.user_id, offering.year, offering.quarter, offering.course_title_id, offering.course_sec))
+            stmt = db.update(ScheduledTeaching).\
+                values(teaching_point_val=value).\
+                where(
+                    (ScheduledTeaching.user_id == offering.user_id) &
+                    (ScheduledTeaching.year == offering.year) &
+                    (ScheduledTeaching.quarter == offering.quarter) &
+                    (ScheduledTeaching.course_title_id == offering.course_title_id) &
+                    (ScheduledTeaching.course_sec == offering.course_sec)
+                )
+
+            db.session.execute(stmt)
+
+            updated_users.add(offering.user_id)
     
-    db.commit()
+    # db.commit()
+    db.session.commit()
 
     for id in updated_users:
         update_yearly_ending_balance(id, start_year)
@@ -287,18 +378,30 @@ def is_valid_input(year, quarter, user_UCINetID_list, course_title_id, course_se
 
     # check the existence of an user    
     for ucinetid in user_UCINetID_list:
-        user = db.execute(
-            'SELECT * FROM users WHERE user_ucinetid = ?', (ucinetid,)
-        ).fetchone()
+        # user = db.execute(
+        #     'SELECT * FROM users WHERE user_ucinetid = ?', (ucinetid,)
+        # ).fetchone()
+        stmt = db.select(Users).where(Users.user_ucinetid == ucinetid)
+        try:
+            user = db.session.execute(stmt).scalar()
+        except NoResultFound:
+            user = None
+
         if user is None:
             err_msg = f"Operation failed: User {ucinetid} not exists in the system."
             flash(err_msg, 'error')
             return False
 
     # check the existence of a course
-    course = db.execute(
-        'SELECT * FROM courses WHERE course_title_id = ?', (course_title_id,)
-    ).fetchone()
+    # course = db.execute(
+    #     'SELECT * FROM courses WHERE course_title_id = ?', (course_title_id,)
+    # ).fetchone()
+    stmt = db.select(Courses).where(Courses.course_title_id == course_title_id)
+    try:
+        course = db.session.execute(stmt).scalar()
+    except NoResultFound:
+        course = None
+
     if course is None:
         err_msg = f"Operation failed: Course {course_title_id} not exists in the system."
         flash(err_msg, 'error')
@@ -337,38 +440,79 @@ def is_valid_input(year, quarter, user_UCINetID_list, course_title_id, course_se
 
 def check_existence_of_row(user_id, year, quarter, course_title_id, course_sec):
     db = get_db()
-    row = db.execute(
-        'SELECT * FROM scheduled_teaching '
-        ' WHERE user_id = ? AND year = ? AND quarter = ? AND course_title_id = ? AND course_sec = ?', 
-        (user_id, year, quarter, course_title_id, course_sec)
-    ).fetchone()
+    # row = db.execute(
+    #     'SELECT * FROM scheduled_teaching '
+    #     ' WHERE user_id = ? AND year = ? AND quarter = ? AND course_title_id = ? AND course_sec = ?', 
+    #     (user_id, year, quarter, course_title_id, course_sec)
+    # ).fetchone()
+    stmt = db.select(ScheduledTeaching).\
+        where(
+            (ScheduledTeaching.user_id == user_id) &
+            (ScheduledTeaching.year == year) &
+            (ScheduledTeaching.quarter == quarter) &
+            (ScheduledTeaching.course_title_id == course_title_id) &
+            (ScheduledTeaching.course_sec == course_sec)
+        )
+    try:
+        row = db.session.execute(stmt).scalar()
+    except NoResultFound:
+        row = None
 
     return row
 
 def insert_scheduled_teaching(user_id, year, quarter, course_title_id, course_sec, num_of_enrollment, offload_or_recall_flag, teaching_point_val):
     db = get_db()
-    db.execute(
-        'INSERT INTO scheduled_teaching (user_id, year, quarter, course_title_id, course_sec, enrollment, offload_or_recall_flag, teaching_point_val)'
-        ' VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-        (user_id, year, quarter, course_title_id, course_sec, num_of_enrollment, offload_or_recall_flag, teaching_point_val)
-    )
-    db.commit()
+    # db.execute(
+    #     'INSERT INTO scheduled_teaching (user_id, year, quarter, course_title_id, course_sec, enrollment, offload_or_recall_flag, teaching_point_val)'
+    #     ' VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+    #     (user_id, year, quarter, course_title_id, course_sec, num_of_enrollment, offload_or_recall_flag, teaching_point_val)
+    # )
+    # db.commit()
+    db.session.add(ScheduledTeaching(
+        user_id=user_id,
+        year=year,
+        quarter=quarter,
+        course_title_id=course_title_id,
+        course_sec=course_sec,
+        enrollment=num_of_enrollment,
+        offload_or_recall_flag=offload_or_recall_flag,
+        teaching_point_val=teaching_point_val))
+    db.session.commit()
 
 def update_scheduled_teaching(num_of_enrollment, offload_or_recall_flag, teaching_point_val, user_id, year, quarter, course_title_id, course_sec):
     db = get_db()
-    db.execute(
-        'UPDATE scheduled_teaching SET enrollment = ?, offload_or_recall_flag = ?, teaching_point_val = ?'
-        ' WHERE user_id = ? AND year = ? AND quarter = ? AND course_title_id = ? AND course_sec = ?', 
-        (num_of_enrollment, offload_or_recall_flag, teaching_point_val, user_id, year, quarter, course_title_id, course_sec)
-    )
-    db.commit()
+    # db.execute(
+    #     'UPDATE scheduled_teaching SET enrollment = ?, offload_or_recall_flag = ?, teaching_point_val = ?'
+    #     ' WHERE user_id = ? AND year = ? AND quarter = ? AND course_title_id = ? AND course_sec = ?', 
+    #     (num_of_enrollment, offload_or_recall_flag, teaching_point_val, user_id, year, quarter, course_title_id, course_sec)
+    # )
+    # db.commit()
+    stmt = db.update(ScheduledTeaching).\
+        values(
+            enrollment=num_of_enrollment,
+            offload_or_recall_flag=offload_or_recall_flag,
+            teaching_point_val=teaching_point_val
+        ).\
+        where(
+            ScheduledTeaching.user_id == user_id,
+            ScheduledTeaching.year == year,
+            ScheduledTeaching.quarter == quarter,
+            ScheduledTeaching.course_title_id == course_title_id,
+            ScheduledTeaching.course_sec == course_sec
+        )
+
+    db.session.execute(stmt)
+    db.session.commit()
 
 def get_ucinetid():
     ucinetids = []
     db = get_db()
-    rows = db.execute('SELECT DISTINCT user_ucinetid FROM users ORDER BY user_ucinetid ASC').fetchall()
-    for row in rows:
-        ucinetids.append(row["user_ucinetid"])
+    # rows = db.execute('SELECT DISTINCT user_ucinetid FROM users ORDER BY user_ucinetid ASC').fetchall()
+    stmt = db.select(db.distinct(Users.user_ucinetid)).order_by(Users.user_ucinetid.asc())
+    user_ucinetids = db.session.execute(stmt).scalars()
+        
+    for user_ucinetid in user_ucinetids:
+        ucinetids.append(user_ucinetid)
     return ucinetids
 
 def get_academic_year(year, quarter):
@@ -382,11 +526,17 @@ def get_ucinetid_list(ucinetids):
 
 def get_combine_with(course_title_id):
     db = get_db()
-    combine_with = db.execute(
-        'SELECT combine_with FROM courses'
-        ' WHERE course_title_id = ?', (course_title_id,)
-    ).fetchone()
-    return combine_with if combine_with is None else combine_with[0]
+    # combine_with = db.execute(
+    #     'SELECT combine_with FROM courses'
+    #     ' WHERE course_title_id = ?', (course_title_id,)
+    # ).fetchone()
+    stmt = db.select(Courses).where(Courses.course_title_id == course_title_id)
+    try:
+        res = db.session.execute(stmt).scalar_one()
+    except NoResultFound:
+        res = None
+
+    return res if res is None else res.combine_with
 
 def get_num_of_enrollment(num):
     return -1 if pd.isna(num) or num == "" else num
@@ -401,23 +551,36 @@ def get_user_id(user_UCINetID):
     # insert these 2 rows into users table to test
         # value: Alfred Chen, alfchen@uci.edu, alfchen
         # value: Eric Mjolsness, emj@uci.edu, emj
-    row = db.execute(
-        'SELECT user_id FROM users'
-        ' WHERE user_ucinetid = ?', (user_UCINetID,)
-    ).fetchone()
+    # row = db.execute(
+    #     'SELECT user_id FROM users'
+    #     ' WHERE user_ucinetid = ?', (user_UCINetID,)
+    # ).fetchone()
+    stmt = db.select(Users.user_id).where(Users.user_ucinetid == user_UCINetID)
+    try:
+        row = db.session.execute(stmt).scalar()
+    except NoResultFound:
+        row = None
+
     if row != None:
-        user_id = row[0]
+        user_id = row
 
     return user_id
 
 def get_user_name(user_id):
     db = get_db()
-    row = db.execute(
-        'SELECT user_name FROM users'
-        ' WHERE user_id = ?', (user_id,)
-    ).fetchone()
+    user_name = None
+    # row = db.execute(
+    #     'SELECT user_name FROM users'
+    #     ' WHERE user_id = ?', (user_id,)
+    # ).fetchone()
+    stmt = db.select(Users.user_name).where(Users.user_id == user_id)
+    try:
+        row = db.session.execute(stmt).scalar()
+    except NoResultFound:
+        row = None
+
     if row != None:
-        user_name = row[0]
+        user_name = row
 
     return user_name
 
@@ -471,21 +634,31 @@ def insert_or_update_scheduled_teaching_for_each_user(user_UCINetID_list, num_of
 
 def get_latest_scheduled_teaching_upload_time():
     db = get_db()
-    res = db.execute(
-        """SELECT * FROM logs
-         WHERE log_category LIKE '%Upload scheduled teaching file%'
-         ORDER BY created DESC LIMIT 1"""
-    ).fetchone()
+    # res = db.execute(
+    #     """SELECT * FROM logs
+    #      WHERE log_category LIKE '%Upload scheduled teaching file%'
+    #      ORDER BY created DESC LIMIT 1"""
+    # ).fetchone()
+    stmt = db.select(Logs).\
+        where(Logs.log_category.like('%Upload scheduled teaching file%')).\
+        order_by(Logs.created.desc()).limit(1)
+    try:
+        res = db.session.execute(stmt).scalar()
+    except NoResultFound:
+        res = None
+
     if res is None:
         return ""
-    return convert_local_timezone(res['created'])
+    return convert_local_timezone(res.created)
 
 def prepopulate_schedule_teaching_template():
     db = get_db()
     # get the latest academic year from scheduled_teaching
-    year = db.execute(
-        'SELECT DISTINCT year FROM scheduled_teaching ORDER BY year DESC LIMIT 1'
-    ).fetchone()['year']
+    # year = db.execute(
+    #     'SELECT DISTINCT year FROM scheduled_teaching ORDER BY year DESC LIMIT 1'
+    # ).fetchone()['year']
+    stmt = db.select(db.distinct(ScheduledTeaching.year)).order_by(db.desc(ScheduledTeaching.year)).limit(1)
+    year = db.session.execute(stmt).scalar_one()
 
     # Should include: year, quarter, ucinetid, course_sec
     # Each prodessor has 3 rows: fall, winter, spring
@@ -509,14 +682,15 @@ def prepopulate_schedule_teaching_template():
 
 def generate_year_options(rows):
     db = get_db()
-    min_quarter = db.execute(
-        'SELECT DISTINCT quarter FROM scheduled_teaching WHERE year = ? ORDER BY quarter ASC', (rows[-1]['year'],)
-    ).fetchone()['quarter']           
+    # min_quarter = db.execute(
+    #     'SELECT DISTINCT quarter FROM scheduled_teaching WHERE year = ? ORDER BY quarter ASC', (rows[-1],)
+    # ).fetchone()['quarter']
+    stmt = db.select(db.distinct(ScheduledTeaching.quarter)).where(ScheduledTeaching.year == rows[-1]).order_by(db.asc(ScheduledTeaching.quarter)).limit(1)
+    min_quarter = db.session.execute(stmt).scalar_one()
 
     year_options = []
     # generate year options
-    for row in rows:
-        year = row['year']
+    for year in rows:
         year_options.append(str(year) + '-' + str(year+1))
 
     # if the biggest year don't have quarter 1, then this biggest year can't be the start of the year period
@@ -537,12 +711,36 @@ def get_displayed_year_period(year_options, year_selected):
 
 def get_displayed_courses(y_start, y_end):
     db = get_db()
-    courses = db.execute(
-        'SELECT year, quarter, user_name, st.course_title_id, course_sec, enrollment, st.user_id'
-        ' FROM scheduled_teaching st JOIN courses ON st.course_title_id = courses.course_title_id JOIN users ON st.user_id = users.user_id'
-        ' WHERE (year = ? AND quarter = 1) OR (year = ? AND quarter = 2) OR (year = ? AND quarter = 3)'
-        ' ORDER BY year DESC, quarter DESC, st.course_title_id', (y_start, y_end, y_end)
-    ).fetchall()
+    # courses = db.execute(
+    #     'SELECT year, quarter, user_name, st.course_title_id, course_sec, enrollment, st.user_id'
+    #     ' FROM scheduled_teaching st JOIN courses ON st.course_title_id = courses.course_title_id JOIN users ON st.user_id = users.user_id'
+    #     ' WHERE (year = ? AND quarter = 1) OR (year = ? AND quarter = 2) OR (year = ? AND quarter = 3)'
+    #     ' ORDER BY year DESC, quarter DESC, st.course_title_id', (y_start, y_end, y_end)
+    # ).fetchall()
+    stmt = db.select(
+        ScheduledTeaching.year,
+        ScheduledTeaching.quarter,
+        Users.user_name,
+        ScheduledTeaching.course_title_id,
+        ScheduledTeaching.course_sec,
+        ScheduledTeaching.enrollment,
+        ScheduledTeaching.user_id
+        ).join(Courses, ScheduledTeaching.course_title_id == Courses.course_title_id)\
+        .join(Users, ScheduledTeaching.user_id == Users.user_id)\
+        .where(
+            ((ScheduledTeaching.year == y_start) & (ScheduledTeaching.quarter == 1)) |
+            ((ScheduledTeaching.year == y_end) & (ScheduledTeaching.quarter == 2)) |
+            ((ScheduledTeaching.year == y_end) & (ScheduledTeaching.quarter == 3))
+        ).order_by(
+            ScheduledTeaching.year.desc(),
+            ScheduledTeaching.quarter.desc(),
+            ScheduledTeaching.course_title_id
+        )
+
+    rows = db.session.execute(stmt).fetchall()
+    courses = []
+    for row in rows:
+        courses.append({"year": row[0], "quarter": row[1], "user_name": row[2], "course_title_id": row[3], "course_sec": row[4], "enrollment": row[5], "user_id": row[6]})
 
     return courses
 

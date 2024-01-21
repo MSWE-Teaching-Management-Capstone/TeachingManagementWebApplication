@@ -1,20 +1,23 @@
 from management_app.db import get_db
 from management_app.views.points import calculate_teaching_point_val, get_faculty_roles_credit_due, calculate_yearly_ending_balance, get_previous_year_point_balance
+from management_app.models import *
 
 def test_calculate_teaching_point_val(app):
     with app.app_context():
         db = get_db()
-        res = db.execute('SELECT user_id, year, quarter, course_title_id, enrollment, offload_or_recall_flag, teaching_point_val FROM scheduled_teaching').fetchall()
+        # res = db.execute('SELECT user_id, year, quarter, course_title_id, enrollment, offload_or_recall_flag, teaching_point_val FROM scheduled_teaching').fetchall()
+        res = db.session.execute(db.select(ScheduledTeaching)).scalars()
+
         for offering in res:
             assert calculate_teaching_point_val(
-                offering['course_title_id'],
-                offering['enrollment'],
-                offering['offload_or_recall_flag'],
-                offering['year'],
-                offering['quarter'],
-                offering['user_id'],
+                offering.course_title_id,
+                offering.enrollment,
+                offering.offload_or_recall_flag,
+                offering.year,
+                offering.quarter,
+                offering.user_id,
                 1
-            ) == offering['teaching_point_val']
+            ) == offering.teaching_point_val
 
 def test_get_faculty_roles_credit_due(app):
     expected = {
@@ -33,16 +36,18 @@ def test_get_faculty_roles_credit_due(app):
 def test_calculate_yearly_ending_balance(app):
     with app.app_context():
         db = get_db()
-        res = db.execute('SELECT user_id, year, previous_balance, ending_balance, credit_due, grad_count FROM faculty_point_info').fetchall()
+        # res = db.execute('SELECT user_id, year, previous_balance, ending_balance, credit_due, grad_count FROM faculty_point_info').fetchall()
+        res = db.session.execute(db.select(FacultyPointInfo)).scalars()
+
         for point_info in res:
             ending_balance = calculate_yearly_ending_balance(
-                point_info['user_id'],
-                point_info['year'],
-                point_info['grad_count'],
-                point_info['previous_balance'],
-                point_info['credit_due']
+                point_info.user_id,
+                point_info.year,
+                point_info.grad_count,
+                point_info.previous_balance,
+                point_info.credit_due
             )
-            assert ending_balance == point_info['ending_balance'], f"Test failed for - user_id: {point_info['user_id']}, year: {point_info['year']}"
+            assert ending_balance == point_info.ending_balance, f"Test failed for - user_id: {point_info.user_id}, year: {point_info.year}"
 
 def test_get_previous_year_point_balance(app):
     with app.app_context():
